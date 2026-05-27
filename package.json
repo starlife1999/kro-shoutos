@@ -1,0 +1,33 @@
+{
+  "name": "kro-shootos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "KRO ShootOS - Professional Photography Creative OS for KRO PK",
+  "author": "KRO PK",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "dev:electron": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "build:electron": "vite build && electron-builder"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.4",
+    "lucide-react": "^0.400.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.23.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "concurrently": "^8.2.2",
+    "electron": "^31.0.2",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "vite": "^5.3.1",
+    "wait-on": "^7.2.0"
+  }
+}

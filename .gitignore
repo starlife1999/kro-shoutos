@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-electron/
+.env
+.env.local
+android/
+ios/
+*.log
+.DS_Store

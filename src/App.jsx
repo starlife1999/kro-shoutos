@@ -1,0 +1,56 @@
+import React from 'react'
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
+
+import PCLayout from './components/layout/PCLayout'
+import MobileLayout from './components/layout/MobileLayout'
+
+import Dashboard from './pages/pc/Dashboard'
+import Campaigns from './pages/pc/Campaigns'
+import Shoots from './pages/pc/Shoots'
+import ShootDetail from './pages/pc/ShootDetail'
+import CalendarPage from './pages/pc/CalendarPage'
+import Ideas from './pages/pc/Ideas'
+import MoodBoard from './pages/pc/MoodBoard'
+import Outfits from './pages/pc/Outfits'
+import PoseReferences from './pages/pc/PoseReferences'
+import ColorPalette from './pages/pc/ColorPalette'
+import Locations from './pages/pc/Locations'
+import Team from './pages/pc/Team'
+import Budget from './pages/pc/Budget'
+import RawPhotos from './pages/pc/RawPhotos'
+import AITools from './pages/pc/AITools'
+import MobilePage from './pages/mobile/MobilePage'
+
+export default function App() {
+  return (
+    <HashRouter>
+      <Routes>
+        <Route element={<PCLayout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/shoots" element={<Shoots />} />
+          <Route path="/shoots/:id" element={<ShootDetail />} />
+          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/ideas" element={<Ideas />} />
+          <Route path="/mood-board" element={<MoodBoard />} />
+          <Route path="/outfits" element={<Outfits />} />
+          <Route path="/pose-references" element={<PoseReferences />} />
+          <Route path="/color-palette" element={<ColorPalette />} />
+          <Route path="/locations" element={<Locations />} />
+          <Route path="/raw-photos" element={<RawPhotos />} />
+          <Route path="/team" element={<Team />} />
+          <Route path="/budget" element={<Budget />} />
+          <Route path="/ai-tools" element={<AITools />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+        <Route path="/m" element={<MobileLayout />}>
+          <Route index element={<MobilePage title="Mobile Home" mode="Today" />} />
+          <Route path="shoots" element={<MobilePage title="Shoots" mode="Schedule" />} />
+          <Route path="on-set" element={<MobilePage title="On-Set" mode="Live Kit" />} />
+          <Route path="capture" element={<MobilePage title="Capture" mode="Raw Intake" />} />
+          <Route path="team" element={<MobilePage title="Team" mode="Crew" />} />
+        </Route>
+      </Routes>
+    </HashRouter>
+  )
+}
