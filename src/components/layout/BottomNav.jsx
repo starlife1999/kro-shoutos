@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { Home, Camera, Aperture, ImagePlus, Users } from 'lucide-react'
+import { Aperture, Camera, Home, ImagePlus, Users } from 'lucide-react'
 
 const TABS = [
   { to: '/m/', label: 'Home', icon: Home, end: true },
@@ -12,33 +12,16 @@ const TABS = [
 
 export default function BottomNav() {
   return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 flex items-center"
-      style={{
-        background: '#080d18',
-        borderTop: '1px solid #334155',
-        height: 64,
-        zIndex: 100,
-      }}
-    >
+    <nav className="kro-mobile-bottom-nav">
       {TABS.map(({ to, label, icon: Icon, end }) => (
         <NavLink
+          className={({ isActive }) => `kro-mobile-bottom-item ${isActive ? 'active' : ''}`}
+          end={end}
           key={to}
           to={to}
-          end={end}
-          className={({ isActive }) =>
-            'flex-1 flex flex-col items-center justify-center gap-0.5 transition-all'
-            + (isActive ? ' text-red-500' : ' text-slate-500')
-          }
-          style={{ minHeight: 48 }}
         >
-          <Icon size={20} />
-          <span
-            className="font-semibold"
-            style={{ fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}
-          >
-            {label}
-          </span>
+          <Icon size={24} strokeWidth={2.2} />
+          <span>{label}</span>
         </NavLink>
       ))}
     </nav>
