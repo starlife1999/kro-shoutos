@@ -5,5 +5,5 @@
 
 
 - [ ] Add visible error display on every page that saves (shows Supabase error message on screen).
-- [ ] Run `npm run build:electron`.
-- [ ] `git add . && git commit -m "fix saving and buttons" && git push`.
+- [x] Run `npm run build:electron`.
+- [x] `git add . && git commit -m "fix saving and buttons" && git push`.

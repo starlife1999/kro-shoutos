@@ -14,6 +14,9 @@ export default function Ideas() {
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
+  const [deleteError, setDeleteError] = useState(null)
+
   const [catFilter, setCatFilter] = useState('all')
   const [search, setSearch] = useState('')
 
@@ -26,9 +29,25 @@ export default function Ideas() {
   const handleSave = async (e) => {
     e.preventDefault()
     setSaving(true)
-    try { await insert({ ...form, shoot_id: form.shoot_id || null }) ; setModal(false) ; setForm(EMPTY_FORM) }
-    finally { setSaving(false) }
+    setSaveError(null)
+    try {
+      // exact columns: ideas(title, description, category, shoot_id)
+      await insert({
+        title: form.title,
+        description: form.description,
+        category: form.category,
+        shoot_id: form.shoot_id || null,
+      })
+      setModal(false)
+      setForm(EMPTY_FORM)
+    } catch (err) {
+      setSaveError(err?.message || 'Failed to save idea')
+      console.error(err)
+    } finally {
+      setSaving(false)
+    }
   }
+
 
   return (
     <div>
@@ -73,6 +92,11 @@ export default function Ideas() {
       </div>
 
       <Modal open={modal} onClose={() => setModal(false)} title="New Idea">
+        {saveError && (
+          <div className="kro-card" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)' }}>
+            <p className="text-xs" style={{ color: '#ef4444' }}>{saveError}</p>
+          </div>
+        )}
         <form onSubmit={handleSave} className="space-y-4">
           <div><label className="kro-label">Title</label><input className="kro-input" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Idea title..." /></div>
           <div><label className="kro-label">Description</label><textarea className="kro-input" rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe your idea..." style={{ resize: 'vertical' }} /></div>
