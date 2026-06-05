@@ -59,12 +59,13 @@ const NAV = [
   },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ onNavigate }) {
   return (
     <aside
       className="flex h-full flex-col overflow-y-auto"
       style={{ width: 236, minWidth: 236, background: '#080d18', borderRight: '1px solid #334155' }}
     >
+
       <div className="flex items-center gap-3 px-4 py-5" style={{ borderBottom: '1px solid #1e293b' }}>
         <div
           className="flex items-center justify-center rounded-md text-sm font-bold text-white"
@@ -88,10 +89,12 @@ export default function Sidebar() {
                 end={to === '/'}
                 key={to}
                 to={to}
+                onClick={() => onNavigate?.()}
               >
                 <Icon size={15} />
                 <span>{label}</span>
               </NavLink>
+
             ))}
           </div>
         ))}
