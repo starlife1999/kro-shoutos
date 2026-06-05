@@ -2,7 +2,7 @@ import React from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import PCLayout from './components/layout/PCLayout'
-import MobileLayout from './components/layout/MobileLayout'
+import MobileLayout from './components/MobileLayout'
 
 import Dashboard from './pages/pc/Dashboard'
 import Campaigns from './pages/pc/Campaigns'
@@ -25,6 +25,14 @@ export default function App() {
   return (
     <HashRouter>
       <Routes>
+        <Route path="/m" element={<MobileLayout />}>
+          <Route index element={<MobilePage title="Home" mode="Today" />} />
+          <Route path="shoots" element={<MobilePage title="Shoots" mode="Schedule" />} />
+          <Route path="shot-list" element={<MobilePage title="Shot List" mode="Checklist" />} />
+          <Route path="team" element={<MobilePage title="Team" mode="Crew" />} />
+          <Route path="ideas" element={<MobilePage title="Ideas" mode="Creative" />} />
+          <Route path="*" element={<Navigate to="/m/" replace />} />
+        </Route>
         <Route element={<PCLayout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/campaigns" element={<Campaigns />} />
@@ -42,13 +50,6 @@ export default function App() {
           <Route path="/budget" element={<Budget />} />
           <Route path="/ai-tools" element={<AITools />} />
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-        <Route path="/m" element={<MobileLayout />}>
-          <Route index element={<MobilePage title="Mobile Home" mode="Today" />} />
-          <Route path="shoots" element={<MobilePage title="Shoots" mode="Schedule" />} />
-          <Route path="on-set" element={<MobilePage title="On-Set" mode="Live Kit" />} />
-          <Route path="capture" element={<MobilePage title="Capture" mode="Raw Intake" />} />
-          <Route path="team" element={<MobilePage title="Team" mode="Crew" />} />
         </Route>
       </Routes>
     </HashRouter>
