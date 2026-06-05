@@ -20,6 +20,8 @@ export default function Shoots() {
   const [saving, setSaving] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [saveError, setSaveError] = useState(null)
+
 
   const filtered = shoots.filter((s) => {
     const matchStatus = statusFilter === 'all' || s.status === statusFilter
@@ -30,14 +32,28 @@ export default function Shoots() {
   const handleSave = async (e) => {
     e.preventDefault()
     setSaving(true)
+    setSaveError(null)
     try {
-      const payload = { ...form, budget_total: parseFloat(form.budget_total) || 0, campaign_id: form.campaign_id || null }
-      await supabase.from('shoots').insert(payload)
+      const payload = {
+        name: form.name,
+        date: form.date,
+        location: form.location,
+        status: form.status,
+        notes: form.notes,
+        budget_total: parseFloat(form.budget_total) || 0,
+        campaign_id: form.campaign_id || null,
+      }
+      const { error } = await supabase.from('shoots').insert(payload)
+      if (error) throw error
       await refetch()
       setModalOpen(false)
       setForm(EMPTY_FORM)
-    } catch (err) { console.error(err) }
-    finally { setSaving(false) }
+    } catch (err) {
+      setSaveError(err?.message || 'Failed to save shoot')
+      console.error(err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleDelete = async (id, e) => {
@@ -148,7 +164,13 @@ export default function Shoots() {
       </div>
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Shoot">
+        {saveError && (
+          <div className="kro-card" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)' }}>
+            <p className="text-xs" style={{ color: '#ef4444' }}>{saveError}</p>
+          </div>
+        )}
         <form onSubmit={handleSave} className="space-y-4">
+
           <div>
             <label className="kro-label">Shoot Name</label>
             <input className="kro-input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Golden Hour Portrait Series" />

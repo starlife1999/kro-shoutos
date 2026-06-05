@@ -16,6 +16,8 @@ export default function Campaigns() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
+
 
   const openCreate = () => { setEditing(null); setForm(EMPTY_FORM); setModalOpen(true) }
   const openEdit = (c) => { setEditing(c); setForm({ name: c.name, description: c.description || '', start_date: c.start_date || '', end_date: c.end_date || '', status: c.status }); setModalOpen(true) }
@@ -23,17 +25,34 @@ export default function Campaigns() {
   const handleSave = async (e) => {
     e.preventDefault()
     setSaving(true)
+    setSaveError(null)
     try {
-      if (editing) {
-        await supabase.from('campaigns').update(form).eq('id', editing.id)
-      } else {
-        await supabase.from('campaigns').insert(form)
+      const payload = {
+        name: form.name,
+        description: form.description,
+        start_date: form.start_date,
+        end_date: form.end_date,
+        status: form.status,
       }
+
+      if (editing) {
+        const { error } = await supabase.from('campaigns').update(payload).eq('id', editing.id)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('campaigns').insert(payload)
+        if (error) throw error
+      }
+
       await refetch()
       setModalOpen(false)
-    } catch (err) { console.error(err) }
-    finally { setSaving(false) }
+    } catch (err) {
+      setSaveError(err?.message || 'Failed to save campaign')
+      console.error(err)
+    } finally {
+      setSaving(false)
+    }
   }
+
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this campaign?')) return
@@ -117,6 +136,11 @@ export default function Campaigns() {
       </div>
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Campaign' : 'New Campaign'}>
+        {saveError && (
+          <div className="kro-card" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)' }}>
+            <p className="text-xs" style={{ color: '#ef4444' }}>{saveError}</p>
+          </div>
+        )}
         <form onSubmit={handleSave} className="space-y-4">
           <div>
             <label className="kro-label">Campaign Name</label>

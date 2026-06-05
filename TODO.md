@@ -1,9 +1,9 @@
 # TODO
+- [x] Inspect Supabase client and confirm current URL/key wiring.
+- [x] Fix `src/lib/supabase.js` to use `supabaseUrl` + `supabaseKey` variable names and provided anon key.
+- [x] Fix every insert payload for tables: `shoots`, `campaigns`, `ideas`, `team`, `budget_items`, `locations` so keys match exact column list.
 
-- [ ] Fix mobile sidebar blocking page (hide by default <768px, hamburger, slide-in overlay, backdrop, close on tap)
-- [ ] Ensure /m/* routes show NO sidebar at all
-- [ ] Build and push: npm run build && git add/commit/push (message: "fix sidebar mobile")
-- [ ] Fix broken PC app buttons across: Campaigns, Shoots, Ideas, Team, Budget, Locations, Outfits, Mood Board, Pose References, Color Palette, Raw Photos, Shot List
-- [ ] Fix data not saving: verify src/lib/supabase.js URL/key, add console.log to every save function, add error handling that shows errors on screen
-- [ ] Build electron + push web: npm run build:electron && git add/commit/push (message: "fix buttons and saving")
 
+- [ ] Add visible error display on every page that saves (shows Supabase error message on screen).
+- [ ] Run `npm run build:electron`.
+- [ ] `git add . && git commit -m "fix saving and buttons" && git push`.

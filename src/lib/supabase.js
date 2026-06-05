@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = 'https://yxpwhdjfqpeamduptatb.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4cHdoZGpmcXBlYW1kdXB0YXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MzY5MTAsImV4cCI6MjA5NTMxMjkxMH0.hmg4aV2QhSOSZnZoOClUfWFMEFhajlE2RVPh_Evvj48'
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4cHdoZGpmcXBlYW1kdXB0YXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MzY5MTAsImV4cCI6MjA5NTMxMjkxMH0.hmg4aV2QhSOSZnZoOClUfWFMEFhajlE2RVPh_Evvj48'
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Storage helpers
 export const getPublicUrl = (bucket, path) => {
