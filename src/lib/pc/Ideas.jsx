@@ -6,8 +6,8 @@ import EmptyState from '../../components/ui/EmptyState'
 import Modal from '../../components/ui/Modal'
 import { useTable } from '../../hooks/useTable'
 
-const CATEGORIES = ['general', 'fashion', 'concept', 'location', 'lighting', 'styling', 'post-production']
-const EMPTY_FORM = { title: '', description: '', category: 'general', shoot_id: '' }
+const CATEGORIES = ['fashion', 'portrait', 'product', 'editorial']
+const EMPTY_FORM = { title: '', description: '', category: 'fashion', shoot_id: '' }
 
 export default function Ideas() {
   const { data: ideas, insert, remove } = useTable('ideas')
