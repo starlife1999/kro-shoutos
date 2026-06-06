@@ -27,11 +27,11 @@ export default function App() {
     <HashRouter>
       <Routes>
         <Route path="/m" element={<MobileLayout />}>
-          <Route index element={<MobilePage title="Home" mode="Today" />} />
-          <Route path="shoots" element={<MobilePage title="Shoots" mode="Schedule" />} />
-          <Route path="shot-list" element={<MobilePage title="Shot List" mode="Checklist" />} />
-          <Route path="team" element={<MobilePage title="Team" mode="Crew" />} />
-          <Route path="ideas" element={<MobilePage title="Ideas" mode="Creative" />} />
+          <Route index element={<MobilePage />} />
+          <Route path="shoots" element={<MobilePage />} />
+          <Route path="shot-list" element={<MobilePage />} />
+          <Route path="team" element={<MobilePage />} />
+          <Route path="ideas" element={<MobilePage />} />
           <Route path="*" element={<Navigate to="/m/" replace />} />
         </Route>
         <Route element={<PCLayout />}>
