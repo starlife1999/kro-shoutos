@@ -149,6 +149,22 @@ function HomeView() {
   const [team, setTeam] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [notifStatus, setNotifStatus] = useState(() => getStoredNotifPermission())
+
+  const handleRequestNotifications = async () => {
+    if (typeof window === 'undefined' || typeof Notification === 'undefined') {
+      setNotifStatus('unsupported')
+      return
+    }
+    try {
+      const result = await Notification.requestPermission()
+      const value = result || 'default'
+      setNotifStatus(value)
+      storeNotifPermission(value)
+    } catch (e) {
+      setNotifStatus('default')
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -208,6 +224,38 @@ function HomeView() {
 
       <ErrorBanner message={error} />
 
+      <div
+        style={{
+          background: '#1e293b',
+          border: '1px solid #334155',
+          borderRadius: 12,
+          padding: 16,
+          marginBottom: 16,
+        }}
+      >
+        <p style={{ color: '#94a3b8', fontSize: 14, marginBottom: 12 }}>
+          Get reminders before your shoots
+        </p>
+        <button
+          onClick={handleRequestNotifications}
+          style={{
+            width: '100%',
+            minHeight: 56,
+            background: '#ef4444',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 12,
+            fontSize: 16,
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          {notifStatus === 'granted' ? 'Reminders Enabled ✓' :
+           notifStatus === 'denied' ? 'Notifications Blocked — Enable in Settings' :
+           'Enable Shoot Reminders'}
+        </button>
+      </div>
+
       <section className="kro-mobile-card">
         <div className="kro-mobile-card-header">
           <div className="kro-mobile-card-icon">
@@ -258,22 +306,6 @@ function HomeView() {
             ))}
           </div>
         )}
-      </section>
-
-      <section className="kro-mobile-card">
-        <div className="kro-mobile-card-header">
-          <div
-            className="kro-mobile-card-icon"
-            style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}
-          >
-            <Sparkles size={24} />
-          </div>
-          <div className="min-w-0">
-            <h2>Shoot Reminders</h2>
-            <p>Get a push 7, 2, 1 days before each shoot</p>
-          </div>
-        </div>
-        <RemindersButton shoots={shoots} />
       </section>
 
       <section className="kro-mobile-card">
