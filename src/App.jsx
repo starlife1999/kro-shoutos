@@ -19,6 +19,7 @@ import Team from './pages/pc/Team'
 import Budget from './pages/pc/Budget'
 import RawPhotos from './pages/pc/RawPhotos'
 import AITools from './pages/pc/AITools'
+import ShotList from './lib/pc/ShotList'
 import MobilePage from './pages/mobile/MobilePage'
 
 export default function App() {
@@ -49,6 +50,7 @@ export default function App() {
           <Route path="/team" element={<Team />} />
           <Route path="/budget" element={<Budget />} />
           <Route path="/ai-tools" element={<AITools />} />
+          <Route path="/shot-list" element={<ShotList />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

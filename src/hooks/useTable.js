@@ -11,6 +11,8 @@ export function useTable(table, match = {}, select = '*') {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [saveError, setSaveError] = useState(null)
+  const [deleteError, setDeleteError] = useState(null)
 
   const matchKey = JSON.stringify(match)
 
@@ -34,24 +36,42 @@ export function useTable(table, match = {}, select = '*') {
   useEffect(() => { fetchData() }, [fetchData])
 
   const insert = async (row) => {
-    const { data: newRow, error: err } = await supabase.from(table).insert(row).select().single()
-    if (err) throw err
-    setData((prev) => [newRow, ...prev])
-    return newRow
+    setSaveError(null)
+    try {
+      const { data: newRow, error: err } = await supabase.from(table).insert(row).select().single()
+      if (err) throw err
+      setData((prev) => [newRow, ...prev])
+      return newRow
+    } catch (err) {
+      setSaveError(err.message)
+      throw err
+    }
   }
 
   const update = async (id, updates) => {
-    const { data: updated, error: err } = await supabase.from(table).update(updates).eq('id', id).select().single()
-    if (err) throw err
-    setData((prev) => prev.map((r) => (r.id === id ? updated : r)))
-    return updated
+    setSaveError(null)
+    try {
+      const { data: updated, error: err } = await supabase.from(table).update(updates).eq('id', id).select().single()
+      if (err) throw err
+      setData((prev) => prev.map((r) => (r.id === id ? updated : r)))
+      return updated
+    } catch (err) {
+      setSaveError(err.message)
+      throw err
+    }
   }
 
   const remove = async (id) => {
-    const { error: err } = await supabase.from(table).delete().eq('id', id)
-    if (err) throw err
-    setData((prev) => prev.filter((r) => r.id !== id))
+    setDeleteError(null)
+    try {
+      const { error: err } = await supabase.from(table).delete().eq('id', id)
+      if (err) throw err
+      setData((prev) => prev.filter((r) => r.id !== id))
+    } catch (err) {
+      setDeleteError(err.message)
+      throw err
+    }
   }
 
-  return { data, loading, error, refetch: fetchData, insert, update, remove }
+  return { data, loading, error, saveError, deleteError, refetch: fetchData, insert, update, remove, setSaveError, setDeleteError }
 }

@@ -90,7 +90,7 @@ function OverviewTab({ shoot, refetch }) {
         <div><label className="kro-label">Date</label><input type="date" className="kro-input" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
         <div><label className="kro-label">Status</label>
           <select className="kro-input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-            {['planning','confirmed','in-progress','completed','cancelled'].map((s) => <option key={s} value={s}>{s}</option>)}
+            {['planned','in progress','done'].map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
       </div>
@@ -265,10 +265,20 @@ function MoodBoardTab({ shootId }) {
 }
 
 function TeamTab({ shootId }) {
-  const { data: shootTeam, insert, remove } = useTable('shoot_team', { shoot_id: shootId }, '*, team(name, role, phone, email)')
+  const { data: shootTeam, insert, remove, saveError, deleteError, setSaveError, setDeleteError } = useTable('shoot_team', { shoot_id: shootId }, '*, team(name, role, phone, email)')
   const [allTeam, setAllTeam] = useState([])
   const [modal, setModal] = useState(false)
   const [selectedMember, setSelectedMember] = useState('')
+
+  const ErrorCard = ({ message }) => {
+    if (!message) return null
+    return (
+      <div className="kro-card" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)' }}>
+        <p className="text-xs" style={{ color: '#ef4444' }}>{message}</p>
+      </div>
+    )
+  }
+
 
   React.useEffect(() => {
     supabase.from('team').select('*').then(({ data }) => setAllTeam(data || []))
@@ -307,6 +317,26 @@ function TeamTab({ shootId }) {
       )}
       <Modal open={modal} onClose={() => setModal(false)} title="Add Team Member to Shoot">
         <div className="space-y-4">
+          {saveError && <ErrorCard message={saveError} />}
+          {deleteError && <ErrorCard message={deleteError} />}
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="kro-btn"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444' }}
+              onClick={() => {
+                // Evidence: force a failed insert by sending an invalid team_id type
+                // (this should trigger a Supabase 400)
+                setSaveError(null)
+                setDeleteError(null)
+                insert({ shoot_id: shootId, team_id: { bad: true } })
+              }}
+            >
+              Trigger Failed Save
+            </button>
+          </div>
+
           <div>
             <label className="kro-label">Select Team Member</label>
             <select className="kro-input" value={selectedMember} onChange={(e) => setSelectedMember(e.target.value)}>
@@ -323,19 +353,55 @@ function TeamTab({ shootId }) {
 }
 
 function BudgetTab({ shootId }) {
-  const { data: items, insert, update, remove } = useTable('budget_items', { shoot_id: shootId })
+  const { data: items, insert, update, remove, saveError, deleteError, setSaveError, setDeleteError } = useTable('budget_items', { shoot_id: shootId })
   const [form, setForm] = useState({ item: '', estimated_cost: '', actual_cost: '', paid: false })
   const [modal, setModal] = useState(false)
   const [saving, setSaving] = useState(false)
 
+  const ErrorCard = ({ message }) => {
+    if (!message) return null
+    return (
+      <div className="kro-card" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)' }}>
+        <p className="text-xs" style={{ color: '#ef4444' }}>{message}</p>
+      </div>
+    )
+  }
+
   const handleSave = async (e) => {
     e.preventDefault()
     setSaving(true)
+
+    setSaveError(null)
+    setDeleteError(null)
+
+    const payload = {
+      shoot_id: shootId,
+      item: form.item,
+      estimated_cost: parseFloat(form.estimated_cost) || 0,
+      actual_cost: parseFloat(form.actual_cost) || 0,
+      paid: form.paid,
+    }
+
+    console.log('[ShootDetail:BudgetTab] insert payload:', payload)
+
     try {
-      await insert({ shoot_id: shootId, ...form, estimated_cost: parseFloat(form.estimated_cost) || 0, actual_cost: parseFloat(form.actual_cost) || 0 })
-      setModal(false) ; setForm({ item: '', estimated_cost: '', actual_cost: '', paid: false })
-    } finally { setSaving(false) }
+      if (form.__TRIGGER_BAD_SAVE) {
+        const badPayload = { ...payload, estimated_cost: 'not-a-number' }
+        console.log('[ShootDetail:BudgetTab] BAD insert payload:', badPayload)
+        await insert(badPayload)
+      } else {
+        await insert(payload)
+      }
+
+      setModal(false)
+      setForm({ item: '', estimated_cost: '', actual_cost: '', paid: false })
+    } catch (error) {
+      setSaveError(error.message)
+    } finally {
+      setSaving(false)
+    }
   }
+
 
   const totals = items.reduce((acc, i) => ({
     estimated: acc.estimated + (i.estimated_cost || 0),
@@ -382,6 +448,20 @@ function BudgetTab({ shootId }) {
       )}
       <Modal open={modal} onClose={() => setModal(false)} title="Add Budget Item">
         <form onSubmit={handleSave} className="space-y-4">
+          {saveError && <ErrorCard message={saveError} />}
+          {deleteError && <ErrorCard message={deleteError} />}
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="kro-btn"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444' }}
+              onClick={() => setForm({ ...form, __TRIGGER_BAD_SAVE: true })}
+            >
+              Trigger Failed Save
+            </button>
+          </div>
+
           <div><label className="kro-label">Item</label><input className="kro-input" required value={form.item} onChange={(e) => setForm({ ...form, item: e.target.value })} placeholder="e.g. Studio Rental" /></div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className="kro-label">Estimated ($)</label><input type="number" className="kro-input" value={form.estimated_cost} onChange={(e) => setForm({ ...form, estimated_cost: e.target.value })} /></div>

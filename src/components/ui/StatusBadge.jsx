@@ -1,12 +1,13 @@
 import React from 'react'
 
 const STATUS_STYLES = {
-  planning:     { bg: 'rgba(59,130,246,0.15)', color: '#3b82f6' },
-  confirmed:    { bg: 'rgba(245,158,11,0.15)', color: '#f59e0b' },
-  'in-progress':{ bg: 'rgba(239,68,68,0.15)',  color: '#ef4444' },
-  completed:    { bg: 'rgba(34,197,94,0.15)',  color: '#22c55e' },
-  cancelled:    { bg: 'rgba(148,163,184,0.15)',color: '#94a3b8' },
+  planned:     { bg: 'rgba(59,130,246,0.15)', color: '#3b82f6' },
+  'in progress':{ bg: 'rgba(239,68,68,0.15)',  color: '#ef4444' },
+  done:        { bg: 'rgba(34,197,94,0.15)',  color: '#22c55e' },
+
+  // kept for backwards-compatibility if older data exists
   active:       { bg: 'rgba(239,68,68,0.15)',  color: '#ef4444' },
+
   archived:     { bg: 'rgba(148,163,184,0.15)',color: '#94a3b8' },
   general:      { bg: 'rgba(148,163,184,0.15)',color: '#94a3b8' },
   fashion:      { bg: 'rgba(245,158,11,0.15)', color: '#f59e0b' },

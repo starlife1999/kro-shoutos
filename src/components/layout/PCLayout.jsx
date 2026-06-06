@@ -6,39 +6,67 @@ export default function PCLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="kro-pc-shell flex h-screen overflow-hidden" style={{ background: '#0f172a' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#0f172a' }}>
+
+      {/* Sidebar — always in flow on desktop, off-canvas on mobile */}
+      <div
+        style={{
+          flexShrink: 0,
+          width: 220,
+          height: '100vh',
+          overflowY: 'auto',
+        }}
+        className="hidden md:block"
+      >
+        <Sidebar onNavigate={() => setSidebarOpen(false)} />
+      </div>
+
       {/* Mobile hamburger */}
       <button
-        className="kro-mobile-hamburger"
-        aria-label="Open sidebar"
         onClick={() => setSidebarOpen(true)}
-        type="button"
+        className="md:hidden"
+        style={{
+          position: 'fixed', top: 12, left: 12, zIndex: 120,
+          width: 44, height: 44, borderRadius: 12,
+          border: '1px solid #334155', background: '#080d18',
+          color: '#f8fafc', fontSize: 20, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
       >
         ☰
       </button>
 
       {/* Mobile backdrop */}
-      <div
-        className={`kro-mobile-backdrop ${sidebarOpen ? 'open' : ''}`}
-        onClick={() => setSidebarOpen(false)}
-        role="button"
-        tabIndex={-1}
-        aria-hidden={!sidebarOpen}
-      />
+      {sidebarOpen && (
+        <div
+          className="md:hidden"
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 110,
+            background: 'rgba(0,0,0,0.55)',
+          }}
+        />
+      )}
 
-      {/* Sidebar (desktop always visible, mobile off-canvas overlay) */}
-      <div className={`kro-sidebar-wrap ${sidebarOpen ? 'open' : ''}`}>
+      {/* Mobile sidebar overlay */}
+      <div
+        className="md:hidden"
+        style={{
+          position: 'fixed', top: 0, left: 0,
+          height: '100vh', zIndex: 115, width: 220,
+          transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 180ms ease',
+          overflowY: 'auto',
+        }}
+      >
         <Sidebar onNavigate={() => setSidebarOpen(false)} />
       </div>
 
-
-      {/* Main content always visible */}
-      <main className="kro-pc-main flex-1 overflow-y-auto">
+      {/* Main content */}
+      <main style={{ flex: 1, overflowY: 'auto' }}>
         <Outlet />
       </main>
 
-      {/* Close sidebar when route changes via footer click; also allow Sidebar to close through links below */}
-      <div className="sr-only" />
     </div>
   )
 }

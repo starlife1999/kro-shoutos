@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Megaphone, Camera, Trash2, Edit2 } from 'lucide-react'
 import PageHeader from '../../components/ui/PageHeader'
@@ -17,6 +17,14 @@ export default function Campaigns() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(null)
+
+  // Local mirror of campaigns list, updated directly after a successful save
+  // so the UI shows the new/edited row immediately without waiting for refetch.
+  const [campaignsLocal, setCampaignsLocal] = useState([])
+
+  useEffect(() => {
+    setCampaignsLocal(campaigns)
+  }, [campaigns])
 
 
   const openCreate = () => { setEditing(null); setForm(EMPTY_FORM); setModalOpen(true) }
@@ -43,8 +51,18 @@ export default function Campaigns() {
         if (error) throw error
       }
 
-      await refetch()
+      // 1. Close modal and reset form first
       setModalOpen(false)
+      setForm(EMPTY_FORM)
+      setEditing(null)
+
+      // 2. Then refetch
+      const { data: fresh } = await supabase
+        .from('campaigns')
+        .select('*, shoots(id, name, status, date)')
+        .order('created_at', { ascending: false })
+
+      if (fresh) setCampaignsLocal(fresh)
     } catch (err) {
       setSaveError(err?.message || 'Failed to save campaign')
       console.error(err)
@@ -57,7 +75,11 @@ export default function Campaigns() {
   const handleDelete = async (id) => {
     if (!confirm('Delete this campaign?')) return
     await supabase.from('campaigns').delete().eq('id', id)
-    await refetch()
+    const { data: fresh } = await supabase
+      .from('campaigns')
+      .select('*, shoots(id, name, status, date)')
+      .order('created_at', { ascending: false })
+    if (fresh) setCampaignsLocal(fresh)
   }
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
@@ -77,7 +99,7 @@ export default function Campaigns() {
       <div className="p-8">
         {loading ? (
           <p style={{ color: '#94a3b8' }}>Loading campaigns...</p>
-        ) : campaigns.length === 0 ? (
+        ) : campaignsLocal.length === 0 ? (
           <EmptyState
             icon={Megaphone}
             title="No Campaigns Yet"
@@ -86,7 +108,7 @@ export default function Campaigns() {
           />
         ) : (
           <div className="grid grid-cols-1 gap-4">
-            {campaigns.map((c) => (
+            {campaignsLocal.map((c) => (
               <div key={c.id} className="kro-card">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">

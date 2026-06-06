@@ -8,10 +8,20 @@ import { supabase } from '../../lib/supabase'
 
 const EMPTY_FORM = { item: '', estimated_cost: '', actual_cost: '', paid: false }
 
+function ErrorNotice({ message }) {
+  if (!message) return null
+  return (
+    <div className="kro-card" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)' }}>
+      <p className="text-xs" style={{ color: '#ef4444' }}>{message}</p>
+    </div>
+  )
+}
+
+
 export default function Budget() {
   const [shoots, setShoots] = useState([])
   const [shootId, setShootId] = useState('')
-  const { data: items, loading, insert, update, remove } = useTable('budget_items', shootId ? { shoot_id: shootId } : {})
+  const { data: items, loading, insert, update, remove, saveError, deleteError, setSaveError, setDeleteError } = useTable('budget_items', shootId ? { shoot_id: shootId } : {})
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
@@ -29,21 +39,65 @@ export default function Budget() {
   const handleSave = async (event) => {
     event.preventDefault()
     setSaving(true)
+
+    const payload = {
+      shoot_id: shootId || null,
+      item: form.item,
+      estimated_cost: Number(form.estimated_cost || 0),
+      actual_cost: Number(form.actual_cost || 0),
+      paid: form.paid,
+    }
+
+    console.log('[Budget] insert payload:', payload)
+
     try {
-      await insert({
-        shoot_id: shootId || null,
-        ...form,
-        estimated_cost: Number(form.estimated_cost || 0),
-        actual_cost: Number(form.actual_cost || 0),
-      })
+      if (form.__TRIGGER_BAD_SAVE) {
+        const badPayload = { ...payload, item: null }
+        console.log('[Budget] BAD insert payload:', badPayload)
+        await insert(badPayload)
+      } else {
+        await insert(payload)
+      }
+
       setForm(EMPTY_FORM)
       setModal(false)
     } catch (error) {
-      alert(error.message)
+      setSaveError(error.message)
     } finally {
       setSaving(false)
     }
   }
+
+  // Must send *exactly* required columns on update as well.
+  const handlePaidToggle = async (item) => {
+    // Ensure payload uses the full required shape.
+    const payload = {
+      shoot_id: item.shoot_id || shootId || null,
+      item: item.item,
+      estimated_cost: Number(item.estimated_cost || 0),
+      actual_cost: Number(item.actual_cost || 0),
+      paid: !item.paid,
+    }
+
+
+    console.log('[Budget] update payload:', payload)
+
+    try {
+      await update(item.id, payload)
+    } catch (error) {
+      setSaveError(error.message)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    try {
+      console.log('[Budget] delete id:', id)
+      await remove(id)
+    } catch (error) {
+      setDeleteError(error.message)
+    }
+  }
+
 
   const money = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)
 
@@ -58,11 +112,15 @@ export default function Budget() {
               <option value="">All Shoots</option>
               {shoots.map((shoot) => <option key={shoot.id} value={shoot.id}>{shoot.name}</option>)}
             </select>
-            <button className="kro-btn kro-btn-primary" onClick={() => setModal(true)}><Plus size={14} /> Add Item</button>
+            <button className="kro-btn kro-btn-primary" onClick={() => { setSaveError(null); setModal(true) }}><Plus size={14} /> Add Item</button>
           </div>
         }
       />
       <div className="p-8">
+        <div className="mb-4 space-y-2">
+          <ErrorNotice message={saveError} />
+          <ErrorNotice message={deleteError} />
+        </div>
         <div className="mb-6 grid gap-4 lg:grid-cols-3">
           {[['Estimated', totals.estimated, '#f59e0b'], ['Actual', totals.actual, '#3b82f6'], ['Paid', totals.paid, '#22c55e']].map(([label, value, color]) => (
             <div key={label} className="kro-card">
@@ -90,8 +148,8 @@ export default function Budget() {
                     <td className="px-3 py-3 font-semibold text-white">{item.item}</td>
                     <td className="px-3 py-3" style={{ color: '#94a3b8' }}>{money(Number(item.estimated_cost || 0))}</td>
                     <td className="px-3 py-3" style={{ color: '#94a3b8' }}>{money(Number(item.actual_cost || 0))}</td>
-                    <td className="px-3 py-3"><button className="kro-badge" onClick={() => update(item.id, { paid: !item.paid })} style={{ background: item.paid ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.12)', color: item.paid ? '#22c55e' : '#94a3b8' }}>{item.paid ? 'Paid' : 'Unpaid'}</button></td>
-                    <td className="px-3 py-3 text-right"><button onClick={() => remove(item.id)} style={{ color: '#ef4444' }} aria-label="Delete budget item"><Trash2 size={15} /></button></td>
+                    <td className="px-3 py-3"><button className="kro-badge" onClick={() => handlePaidToggle(item)} style={{ background: item.paid ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.12)', color: item.paid ? '#22c55e' : '#94a3b8' }}>{item.paid ? 'Paid' : 'Unpaid'}</button></td>
+                    <td className="px-3 py-3 text-right"><button onClick={() => handleDelete(item.id)} style={{ color: '#ef4444' }} aria-label="Delete budget item"><Trash2 size={15} /></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -102,7 +160,19 @@ export default function Budget() {
 
       <Modal open={modal} onClose={() => setModal(false)} title="Add Budget Item">
         <form onSubmit={handleSave} className="space-y-4">
+          <ErrorNotice message={saveError} />
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="kro-btn"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444' }}
+              onClick={() => setForm({ ...form, __TRIGGER_BAD_SAVE: true })}
+            >
+              Trigger Failed Save
+            </button>
+          </div>
           <div><label className="kro-label">Item</label><input className="kro-input" required value={form.item} onChange={(e) => setForm({ ...form, item: e.target.value })} placeholder="Studio rental" /></div>
+
           <div className="grid grid-cols-2 gap-4">
             <div><label className="kro-label">Estimated Cost</label><input type="number" className="kro-input" value={form.estimated_cost} onChange={(e) => setForm({ ...form, estimated_cost: e.target.value })} /></div>
             <div><label className="kro-label">Actual Cost</label><input type="number" className="kro-input" value={form.actual_cost} onChange={(e) => setForm({ ...form, actual_cost: e.target.value })} /></div>

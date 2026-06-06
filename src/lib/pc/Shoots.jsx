@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Camera, MapPin, CalendarDays, Trash2, Search } from 'lucide-react'
 import PageHeader from '../../components/ui/PageHeader'
@@ -9,8 +9,8 @@ import { useShoots } from '../../hooks/useShoots'
 import { useCampaigns } from '../../hooks/useCampaigns'
 import { supabase } from '../../lib/supabase'
 
-const EMPTY_FORM = { name: '', date: '', location: '', status: 'planning', notes: '', budget_total: '', campaign_id: '' }
-const STATUS_FILTERS = ['all', 'planning', 'confirmed', 'in-progress', 'completed', 'cancelled']
+const EMPTY_FORM = { name: '', date: '', location: '', status: 'planned', notes: '', budget_total: '', campaign_id: '' }
+const STATUS_FILTERS = ['all', 'planned', 'in progress', 'done']
 
 export default function Shoots() {
   const { shoots, loading, refetch } = useShoots()
@@ -22,8 +22,16 @@ export default function Shoots() {
   const [search, setSearch] = useState('')
   const [saveError, setSaveError] = useState(null)
 
+  // Local mirror of the shoots list. Updated on every refetch, and
+  // optimistically updated immediately after a successful insert so the
+  // new row appears in the list without waiting for the network round-trip.
+  const [shootsLocal, setShootsLocal] = useState([])
 
-  const filtered = shoots.filter((s) => {
+  useEffect(() => {
+    setShootsLocal(shoots)
+  }, [shoots])
+
+  const filtered = shootsLocal.filter((s) => {
     const matchStatus = statusFilter === 'all' || s.status === statusFilter
     const matchSearch = !search || s.name.toLowerCase().includes(search.toLowerCase()) || (s.location || '').toLowerCase().includes(search.toLowerCase())
     return matchStatus && matchSearch
@@ -43,11 +51,26 @@ export default function Shoots() {
         budget_total: parseFloat(form.budget_total) || 0,
         campaign_id: form.campaign_id || null,
       }
-      const { error } = await supabase.from('shoots').insert(payload)
+      console.log('SHOOT INSERT PAYLOAD', payload)
+      const { data: inserted, error } = await supabase
+        .from('shoots')
+        .insert(payload)
+        .select('*, campaigns(name)')
+        .single()
       if (error) throw error
-      await refetch()
+      console.log('SHOOT INSERT SUCCESS', inserted)
+
+      // 1. Close modal and reset form first
       setModalOpen(false)
       setForm(EMPTY_FORM)
+
+      // 2. Then refetch
+      const { data: fresh } = await supabase
+        .from('shoots')
+        .select('*, campaigns(name)')
+        .order('date', { ascending: true })
+
+      if (fresh) setShootsLocal(fresh)
     } catch (err) {
       setSaveError(err?.message || 'Failed to save shoot')
       console.error(err)
@@ -61,6 +84,7 @@ export default function Shoots() {
     e.stopPropagation()
     if (!confirm('Delete this shoot?')) return
     await supabase.from('shoots').delete().eq('id', id)
+    setShootsLocal((prev) => prev.filter((p) => p.id !== id))
     await refetch()
   }
 
@@ -70,7 +94,7 @@ export default function Shoots() {
     <div>
       <PageHeader
         title="Shoots"
-        subtitle={`${shoots.length} total shoot${shoots.length !== 1 ? 's' : ''}`}
+        subtitle={`${shootsLocal.length} total shoot${shootsLocal.length !== 1 ? 's' : ''}`}
         actions={
           <button onClick={() => setModalOpen(true)} className="kro-btn kro-btn-primary">
             <Plus size={14} /> New Shoot
@@ -105,20 +129,20 @@ export default function Shoots() {
                   fontSize: '0.7rem',
                 }}
               >
-                {s === 'all' ? 'All' : s}
+                {s === 'all' ? 'All' : s === 'in progress' ? 'in progress' : s}
               </button>
             ))}
           </div>
         </div>
 
-        {loading ? (
+        {loading && shootsLocal.length === 0 ? (
           <p style={{ color: '#94a3b8' }}>Loading shoots...</p>
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={Camera}
             title="No Shoots Found"
-            description={shoots.length === 0 ? "Create your first shoot to get started." : "No shoots match your current filters."}
-            action={shoots.length === 0 && <button onClick={() => setModalOpen(true)} className="kro-btn kro-btn-primary"><Plus size={14} /> New Shoot</button>}
+            description={shootsLocal.length === 0 ? "Create your first shoot to get started." : "No shoots match your current filters."}
+            action={shootsLocal.length === 0 && <button onClick={() => setModalOpen(true)} className="kro-btn kro-btn-primary"><Plus size={14} /> New Shoot</button>}
           />
         ) : (
           <div className="grid grid-cols-1 gap-3">
@@ -183,11 +207,9 @@ export default function Shoots() {
             <div>
               <label className="kro-label">Status</label>
               <select className="kro-input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                <option value="planning">Planning</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="in-progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="planned">planned</option>
+                <option value="in progress">in progress</option>
+                <option value="done">done</option>
               </select>
             </div>
           </div>

@@ -26,7 +26,7 @@ export function useShoots(filters = {}) {
     } finally {
       setLoading(false)
     }
-  }, [filters.status, filters.campaign_id])
+  }, []) // eslint-disable-line
 
   useEffect(() => { fetchShoots() }, [fetchShoots])
 
