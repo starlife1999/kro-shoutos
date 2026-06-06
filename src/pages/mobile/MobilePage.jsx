@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
   Camera,
@@ -19,6 +19,85 @@ import {
 import { supabase } from '../../lib/supabase'
 
 const IDEA_CATEGORIES = ['fashion', 'portrait', 'product', 'editorial']
+const NOTIF_PERMISSION_KEY = 'kro_shootos_notif_permission'
+
+function getStoredNotifPermission() {
+  if (typeof window === 'undefined') return 'default'
+  try {
+    return (
+      window.localStorage.getItem(NOTIF_PERMISSION_KEY) ||
+      (typeof Notification !== 'undefined' ? Notification.permission : 'default')
+    )
+  } catch (e) {
+    return typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  }
+}
+
+function storeNotifPermission(value) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(NOTIF_PERMISSION_KEY, value)
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+function fireNotification(title, body, url) {
+  if (typeof window === 'undefined' || typeof Notification === 'undefined') return
+  if (Notification.permission !== 'granted') return
+  try {
+    if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.showNotification(title, {
+          body,
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          data: { url: url || '/m/calendar' },
+        })
+      })
+    } else {
+      // eslint-disable-next-line no-new
+      new Notification(title, { body, icon: '/icon-192.png' })
+    }
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+function scheduleShootReminders(shoots) {
+  if (typeof window === 'undefined' || typeof Notification === 'undefined') return []
+  if (Notification.permission !== 'granted') return []
+  const now = Date.now()
+  const timeouts = []
+  shoots.forEach((s) => {
+    if (!s.date) return
+    const shootTs = new Date(s.date + 'T08:00:00').getTime()
+    if (Number.isNaN(shootTs)) return
+    const offsets = [
+      { days: -7, label: 'is in 7 days' },
+      { days: -2, label: 'is in 2 days' },
+      { days: -1, label: 'is tomorrow' },
+    ]
+    offsets.forEach(({ days, label }) => {
+      const fireAt = shootTs + days * 86400000
+      const diff = fireAt - now
+      if (diff > 0 && diff < 1000 * 60 * 60 * 24 * 30) {
+        const id = setTimeout(() => {
+          fireNotification('KRO ShootOS', `${s.name} ${label}`, '/m/calendar')
+        }, diff)
+        timeouts.push(id)
+      }
+    })
+    const dayDiff = shootTs - now
+    if (dayDiff > 0 && dayDiff < 1000 * 60 * 60 * 24 * 30) {
+      const id = setTimeout(() => {
+        fireNotification('KRO ShootOS', `Today is shoot day: ${s.name}`, '/m/calendar')
+      }, dayDiff)
+      timeouts.push(id)
+    }
+  })
+  return timeouts
+}
 
 function formatDate(d) {
   if (!d) return '—'
@@ -179,6 +258,22 @@ function HomeView() {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="kro-mobile-card">
+        <div className="kro-mobile-card-header">
+          <div
+            className="kro-mobile-card-icon"
+            style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}
+          >
+            <Sparkles size={24} />
+          </div>
+          <div className="min-w-0">
+            <h2>Shoot Reminders</h2>
+            <p>Get a push 7, 2, 1 days before each shoot</p>
+          </div>
+        </div>
+        <RemindersButton shoots={shoots} />
       </section>
 
       <section className="kro-mobile-card">
@@ -1207,18 +1302,420 @@ function TeamView() {
   )
 }
 
+/* ============== REMINDERS BUTTON ============== */
+function RemindersButton({ shoots }) {
+  const [permission, setPermission] = useState(() => getStoredNotifPermission())
+  const [reminderCount, setReminderCount] = useState(0)
+  const scheduledRef = useRef([])
+
+  useEffect(() => {
+    if (permission === 'granted' && shoots && shoots.length > 0) {
+      scheduledRef.current.forEach((id) => clearTimeout(id))
+      scheduledRef.current = scheduleShootReminders(shoots)
+      setReminderCount(scheduledRef.current.length)
+    }
+    return () => {
+      scheduledRef.current.forEach((id) => clearTimeout(id))
+    }
+  }, [shoots, permission])
+
+  useEffect(() => {
+    if (permission !== 'granted') return
+    const now = new Date()
+    if (now.getDate() !== 1) return
+    const monthKey = `${now.getFullYear()}-${now.getMonth()}`
+    const sentKey = 'kro_shootos_monthly_summary_sent'
+    let sent = null
+    try {
+      sent = window.localStorage.getItem(sentKey)
+    } catch (e) {
+      sent = null
+    }
+    if (sent === monthKey) return
+    const monthlyShoots = (shoots || []).filter((s) => {
+      if (!s.date) return false
+      const d = new Date(s.date)
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+    })
+    if (monthlyShoots.length === 0) return
+    fireNotification(
+      'KRO ShootOS',
+      `This month: ${monthlyShoots.map((s) => s.name).join(', ')}`,
+      '/m/calendar'
+    )
+    try {
+      window.localStorage.setItem(sentKey, monthKey)
+    } catch (e) {
+      /* ignore */
+    }
+  }, [shoots, permission])
+
+  const enableReminders = async () => {
+    if (typeof window === 'undefined' || typeof Notification === 'undefined') {
+      setPermission('unsupported')
+      return
+    }
+    try {
+      const result = await Notification.requestPermission()
+      const value = result || 'default'
+      setPermission(value)
+      storeNotifPermission(value)
+      if (value === 'granted' && shoots && shoots.length > 0) {
+        scheduledRef.current.forEach((id) => clearTimeout(id))
+        scheduledRef.current = scheduleShootReminders(shoots)
+        setReminderCount(scheduledRef.current.length)
+      }
+    } catch (e) {
+      setPermission('default')
+    }
+  }
+
+  const notifUnsupported =
+    typeof window === 'undefined' || typeof Notification === 'undefined'
+
+  const buttonLabel = notifUnsupported
+    ? 'Notifications unsupported'
+    : permission === 'granted'
+    ? `Reminders Enabled${reminderCount ? ` (${reminderCount})` : ''}`
+    : permission === 'denied'
+    ? 'Notifications blocked — enable in Settings'
+    : 'Enable Shoot Reminders'
+
+  const buttonStyle =
+    permission === 'granted'
+      ? {
+          background: 'rgba(34,197,94,0.15)',
+          color: '#22c55e',
+          border: '1px solid rgba(34,197,94,0.35)',
+        }
+      : permission === 'denied'
+      ? {
+          background: 'rgba(239,68,68,0.1)',
+          color: '#ef4444',
+          border: '1px solid rgba(239,68,68,0.3)',
+        }
+      : {}
+
+  return (
+    <button
+      type="button"
+      onClick={enableReminders}
+      className="kro-btn"
+      style={{
+        minHeight: 56,
+        width: '100%',
+        justifyContent: 'center',
+        fontSize: 16,
+        ...buttonStyle,
+      }}
+    >
+      {buttonLabel}
+    </button>
+  )
+}
+
+/* ============== CALENDAR ============== */
+function CalendarView() {
+  const [shoots, setShoots] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [cursor, setCursor] = useState(() => {
+    const d = new Date()
+    return new Date(d.getFullYear(), d.getMonth(), 1)
+  })
+  const [selectedDate, setSelectedDate] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .from('shoots')
+      .select('id, name, date, location, status')
+      .order('date', { ascending: true })
+      .then(({ data, error: err }) => {
+        if (cancelled) return
+        setLoading(false)
+        if (err) {
+          setError(err.message)
+          return
+        }
+        setShoots(data || [])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const year = cursor.getFullYear()
+  const month = cursor.getMonth()
+  const monthName = cursor.toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  })
+  const firstWeekday = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells = []
+  for (let i = 0; i < firstWeekday; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  const isoForDay = (d) => {
+    const m = String(month + 1).padStart(2, '0')
+    const day = String(d).padStart(2, '0')
+    return `${year}-${m}-${day}`
+  }
+  const shootsForDay = (d) => shoots.filter((s) => s.date === isoForDay(d))
+  const shootsForSelected = selectedDate
+    ? shoots.filter((s) => s.date === selectedDate)
+    : []
+
+  const todayObj = new Date()
+  const isToday = (d) =>
+    d === todayObj.getDate() &&
+    month === todayObj.getMonth() &&
+    year === todayObj.getFullYear()
+
+  const goPrev = () => setCursor(new Date(year, month - 1, 1))
+  const goNext = () => setCursor(new Date(year, month + 1, 1))
+
+  return (
+    <div className="kro-mobile-page">
+      <div className="kro-mobile-hero">
+        <div className="min-w-0">
+          <p className="kro-mobile-eyebrow">Calendar</p>
+          <h1>{monthName}</h1>
+          <p>Tap a day with a dot to see shoots.</p>
+        </div>
+      </div>
+
+      <ErrorBanner message={error} />
+
+      <section className="kro-mobile-card">
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            marginBottom: 14,
+          }}
+        >
+          <button
+            type="button"
+            onClick={goPrev}
+            className="kro-btn kro-btn-ghost"
+            style={{
+              minHeight: 56,
+              minWidth: 56,
+              padding: '0 14px',
+              justifyContent: 'center',
+            }}
+            aria-label="Previous month"
+          >
+            <ChevronRight size={22} style={{ transform: 'rotate(180deg)' }} />
+          </button>
+          <span style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc' }}>
+            {monthName}
+          </span>
+          <button
+            type="button"
+            onClick={goNext}
+            className="kro-btn kro-btn-ghost"
+            style={{
+              minHeight: 56,
+              minWidth: 56,
+              padding: '0 14px',
+              justifyContent: 'center',
+            }}
+            aria-label="Next month"
+          >
+            <ChevronRight size={22} />
+          </button>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, 1fr)',
+            gap: 6,
+            marginBottom: 6,
+          }}
+        >
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+            <div
+              key={`hdr-${i}`}
+              style={{
+                textAlign: 'center',
+                color: '#94a3b8',
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                minHeight: 24,
+              }}
+            >
+              {d}
+            </div>
+          ))}
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, 1fr)',
+            gap: 6,
+          }}
+        >
+          {cells.map((d, idx) => {
+            if (d === null) {
+              return <div key={`e-${idx}`} style={{ minHeight: 56 }} />
+            }
+            const dayShoots = shootsForDay(d)
+            const hasShoot = dayShoots.length > 0
+            const today = isToday(d)
+            const isSelected = selectedDate === isoForDay(d)
+            return (
+              <button
+                key={`d-${d}`}
+                type="button"
+                onClick={() => hasShoot && setSelectedDate(isoForDay(d))}
+                disabled={!hasShoot}
+                style={{
+                  minHeight: 56,
+                  borderRadius: 12,
+                  border: isSelected
+                    ? '1px solid #ef4444'
+                    : today
+                    ? '1px solid #ef4444'
+                    : '1px solid #334155',
+                  background: isSelected
+                    ? 'rgba(239,68,68,0.18)'
+                    : today
+                    ? 'rgba(239,68,68,0.08)'
+                    : '#0f172a',
+                  color: today ? '#ef4444' : '#f8fafc',
+                  fontWeight: 800,
+                  fontSize: 16,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                  cursor: hasShoot ? 'pointer' : 'default',
+                  opacity: hasShoot ? 1 : 0.55,
+                  fontFamily: 'inherit',
+                  padding: 0,
+                }}
+              >
+                <span>{d}</span>
+                {hasShoot && (
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: today ? '#ef4444' : '#22c55e',
+                    }}
+                  />
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {loading && (
+          <p style={{ color: '#94a3b8', fontSize: 14, marginTop: 12 }}>
+            Loading shoots…
+          </p>
+        )}
+      </section>
+
+      {selectedDate && (
+        <section className="kro-mobile-card">
+          <div className="kro-mobile-card-header" style={{ marginBottom: 12 }}>
+            <div
+              className="kro-mobile-card-icon"
+              style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}
+            >
+              <CalendarDays size={24} />
+            </div>
+            <div className="min-w-0">
+              <h2>{formatDate(selectedDate)}</h2>
+              <p>
+                {shootsForSelected.length} shoot
+                {shootsForSelected.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+          <div className="kro-mobile-list">
+            {shootsForSelected.map((s) => (
+              <div
+                className="kro-mobile-list-item"
+                key={s.id}
+                style={{ alignItems: 'flex-start' }}
+              >
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: 'rgba(239,68,68,0.12)',
+                    color: '#ef4444',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flex: '0 0 44px',
+                  }}
+                >
+                  <Camera size={22} />
+                </div>
+                <div
+                  className="min-w-0 flex-1"
+                  style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
+                >
+                  <span style={{ fontSize: 17, fontWeight: 800, color: '#f8fafc' }}>
+                    {s.name}
+                  </span>
+                  {s.location && (
+                    <span style={{ fontSize: 14, color: '#94a3b8', fontWeight: 600 }}>
+                      {s.location}
+                    </span>
+                  )}
+                  <span
+                    className="kro-badge"
+                    style={{
+                      alignSelf: 'flex-start',
+                      background:
+                        s.status === 'done'
+                          ? 'rgba(34,197,94,0.15)'
+                          : 'rgba(239,68,68,0.15)',
+                      color: s.status === 'done' ? '#22c55e' : '#ef4444',
+                      marginTop: 4,
+                    }}
+                  >
+                    {s.status || 'planned'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  )
+}
+
 /* ============== MOBILE PAGE (router-aware dispatcher) ============== */
 export default function MobilePage() {
   const location = useLocation()
   const [activeTab, setActiveTab] = useState(() => tabFromPath(location.pathname))
 
-  // Keep active tab in sync with the current URL
   useEffect(() => {
     setActiveTab(tabFromPath(location.pathname))
   }, [location.pathname])
 
   let view = null
   if (activeTab === 'home') view = <HomeView />
+  else if (activeTab === 'calendar') view = <CalendarView />
   else if (activeTab === 'shoots') view = <ShootsView />
   else if (activeTab === 'shot-list') view = <ShotListView />
   else if (activeTab === 'ideas') view = <IdeasView />
@@ -1228,8 +1725,9 @@ export default function MobilePage() {
 }
 
 function tabFromPath(pathname) {
-  const p = (pathname || '').replace(/\/+$/, '') // strip trailing slash
+  const p = (pathname || '').replace(/\/+$/, '')
   if (p === '' || p === '/m') return 'home'
+  if (p.endsWith('/calendar')) return 'calendar'
   if (p.endsWith('/shoots')) return 'shoots'
   if (p.endsWith('/shot-list')) return 'shot-list'
   if (p.endsWith('/ideas')) return 'ideas'

@@ -44,6 +44,7 @@ export default function App() {
       <Routes>
         <Route path="/m" element={<MobileLayout />}>
           <Route index element={<MobilePage />} />
+          <Route path="calendar" element={<MobilePage />} />
           <Route path="shoots" element={<MobilePage />} />
           <Route path="shot-list" element={<MobilePage />} />
           <Route path="team" element={<MobilePage />} />
