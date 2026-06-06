@@ -10,6 +10,7 @@ import Shoots from './pages/pc/Shoots'
 import ShootDetail from './pages/pc/ShootDetail'
 import CalendarPage from './pages/pc/CalendarPage'
 import Ideas from './pages/pc/Ideas'
+import IdeaDetail from './pages/pc/IdeaDetail'
 import MoodBoard from './pages/pc/MoodBoard'
 import Outfits from './pages/pc/Outfits'
 import PoseReferences from './pages/pc/PoseReferences'
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/shoots/:id" element={<ShootDetail />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/ideas" element={<Ideas />} />
+          <Route path="/ideas/:id" element={<IdeaDetail />} />
           <Route path="/mood-board" element={<MoodBoard />} />
           <Route path="/outfits" element={<Outfits />} />
           <Route path="/pose-references" element={<PoseReferences />} />

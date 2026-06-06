@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Plus, Lightbulb, Trash2, Search } from 'lucide-react'
 import PageHeader from '../../components/ui/PageHeader'
 import StatusBadge from '../../components/ui/StatusBadge'
@@ -75,17 +76,17 @@ export default function Ideas() {
         ) : (
           <div className="grid grid-cols-3 gap-4">
             {filtered.map((idea) => (
-              <div key={idea.id} className="kro-card group flex flex-col">
+              <Link key={idea.id} to={`/ideas/${idea.id}`} className="kro-card group flex flex-col" style={{ textDecoration: 'none' }}>
                 <div className="flex items-start justify-between mb-2">
                   <StatusBadge status={idea.category} />
-                  <button onClick={() => remove(idea.id)} className="opacity-0 group-hover:opacity-100" style={{ color: '#ef4444' }}><Trash2 size={14} /></button>
+                  <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); remove(idea.id); }} className="opacity-0 group-hover:opacity-100" style={{ color: '#ef4444' }}><Trash2 size={14} /></button>
                 </div>
                 <h3 className="font-bold text-white mb-1" style={{ fontSize: '0.9rem' }}>{idea.title}</h3>
                 {idea.description && <p className="text-sm flex-1" style={{ color: '#94a3b8' }}>{idea.description}</p>}
                 <p className="text-xs mt-3" style={{ color: '#334155' }}>
                   {new Date(idea.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </p>
-              </div>
+              </Link>
             ))}
           </div>
         )}
