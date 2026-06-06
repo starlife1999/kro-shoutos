@@ -573,7 +573,13 @@ function ShotListView() {
       return
     }
     setDescription('')
-    await refetchShots()
+    // Direct fetch back into local state so the new shot appears instantly
+    const { data: fresh } = await supabase
+      .from('shot_list')
+      .select('*')
+      .eq('shoot_id', shootId)
+      .order('created_at', { ascending: true })
+    if (fresh) setShots(fresh)
   }
 
   const handleToggle = async (shot) => {
@@ -805,7 +811,12 @@ function IdeasView() {
       if (err) throw err
       setForm({ title: '', description: '', category: 'fashion' })
       setShowForm(false)
-      await fetchIdeas()
+      // Direct fetch back into local state so the new idea appears instantly
+      const { data: fresh } = await supabase
+        .from('ideas')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (fresh) setIdeas(fresh)
     } catch (e2) {
       setError(e2.message)
     } finally {
