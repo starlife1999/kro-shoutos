@@ -1,5 +1,5 @@
-import React from 'react'
-import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 import PCLayout from './components/layout/PCLayout'
 import MobileLayout from './components/MobileLayout'
@@ -22,9 +22,25 @@ import AITools from './pages/pc/AITools'
 import ShotList from './lib/pc/ShotList'
 import MobilePage from './pages/mobile/MobilePage'
 
+function MobileRedirect() {
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    const isMobile = window.innerWidth < 768
+    const isAtRoot = location.pathname === '/'
+    if (isMobile && isAtRoot) {
+      navigate('/m', { replace: true })
+    }
+  }, [])
+
+  return null
+}
+
 export default function App() {
   return (
     <HashRouter>
+      <MobileRedirect />
       <Routes>
         <Route path="/m" element={<MobileLayout />}>
           <Route index element={<MobilePage />} />
