@@ -583,26 +583,30 @@ function ShotListView() {
   }
 
   const handleToggle = async (shot) => {
-    setError(null)
-    const { error: err } = await supabase
+    const { error } = await supabase
       .from('shot_list')
       .update({ is_done: !shot.is_done })
       .eq('id', shot.id)
-    if (err) {
-      setError(err.message)
+    if (error) {
+      setError(error.message)
       return
     }
-    await refetchShots()
+    const { data: fresh } = await supabase
+      .from('shot_list')
+      .select('*')
+      .eq('shoot_id', shootId)
+      .order('created_at', { ascending: true })
+    if (fresh) setShots(fresh)
   }
 
   const handleDelete = async (id) => {
-    setError(null)
-    const { error: err } = await supabase.from('shot_list').delete().eq('id', id)
-    if (err) {
-      setError(err.message)
-      return
-    }
-    await refetchShots()
+    await supabase.from('shot_list').delete().eq('id', id)
+    const { data: fresh } = await supabase
+      .from('shot_list')
+      .select('*')
+      .eq('shoot_id', shootId)
+      .order('created_at', { ascending: true })
+    if (fresh) setShots(fresh)
   }
 
   const doneCount = shots.filter((s) => s.is_done).length
@@ -683,7 +687,10 @@ function ShotListView() {
               </p>
             </div>
           ) : (
-            <div className="kro-mobile-list">
+            <div
+              className="kro-mobile-list"
+              style={{ overflowY: 'auto', flex: 1, paddingBottom: 120 }}
+            >
               {shots.map((shot) => (
                 <div
                   key={shot.id}
@@ -699,8 +706,8 @@ function ShotListView() {
                     onClick={() => handleToggle(shot)}
                     aria-label={shot.is_done ? 'Mark as not done' : 'Mark as done'}
                     style={{
-                      width: 44,
-                      height: 44,
+                      width: 56,
+                      height: 56,
                       borderRadius: 12,
                       background: shot.is_done
                         ? 'rgba(34,197,94,0.18)'
@@ -712,11 +719,11 @@ function ShotListView() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      flex: '0 0 44px',
+                      flex: '0 0 56px',
                       cursor: 'pointer',
                     }}
                   >
-                    {shot.is_done ? <Check size={20} /> : <span style={{ fontSize: 18 }}>○</span>}
+                    {shot.is_done ? <Check size={24} /> : <span style={{ fontSize: 22 }}>○</span>}
                   </button>
                   <span
                     style={{
@@ -734,8 +741,8 @@ function ShotListView() {
                     onClick={() => handleDelete(shot.id)}
                     aria-label="Delete shot"
                     style={{
-                      width: 44,
-                      height: 44,
+                      width: 56,
+                      height: 56,
                       borderRadius: 12,
                       background: 'rgba(239,68,68,0.1)',
                       border: '1px solid rgba(239,68,68,0.25)',
@@ -743,11 +750,11 @@ function ShotListView() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      flex: '0 0 44px',
+                      flex: '0 0 56px',
                       cursor: 'pointer',
                     }}
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={22} />
                   </button>
                 </div>
               ))}
