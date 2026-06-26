@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Upload, Trash2, Image as ImageIcon } from 'lucide-react'
-import { supabase, uploadFile } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 
 export default function ShotDetail() {
   const { type, shotId } = useParams()
@@ -53,12 +53,24 @@ export default function ShotDetail() {
     if (!file) return
     setUploading(true)
     try {
-      const path = `${shotId}/${Date.now()}-${file.name}`
-      const url = await uploadFile('shot-references', path, file)
-      const { error: err } = await supabase
-        .from('shot_references')
-        .insert({ shot_id: shotId, image_url: url, shot_type: type })
-      if (err) throw err
+      const filePath = `${shotId}/${Date.now()}-${file.name}`
+      const { error: uploadError } = await supabase.storage
+        .from('shot-references')
+        .upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage
+        .from('shot-references')
+        .getPublicUrl(filePath)
+
+      const { error: insertError } = await supabase.from('shot_references').insert({
+        shot_id: shotId,
+        shot_type: type,
+        image_url: urlData.publicUrl,
+      })
+
+      if (insertError) throw insertError
       await fetchReferences()
     } catch (err) {
       alert('Upload failed: ' + err.message)

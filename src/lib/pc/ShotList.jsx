@@ -240,7 +240,6 @@ export default function ShotList() {
                     className="kro-card flex items-center gap-3"
                     style={{
                       opacity: shot.is_done ? 0.6 : 1,
-                      textDecoration: shot.is_done ? 'line-through' : 'none',
                     }}
                   >
                     <button
@@ -255,13 +254,18 @@ export default function ShotList() {
                     >
                       {shot.is_done ? <Check size={14} /> : <span style={{ fontSize: 10 }}>○</span>}
                     </button>
-                    <Link
-                      to={`/shots/shoot/${shot.id}`}
-                      className="flex-1 text-sm text-white no-underline"
-                      style={{ color: '#f8fafc' }}
-                    >
-                      {shot.description}
-                    </Link>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        to={`/shots/shoot/${shot.id}`}
+                        className="inline text-sm text-white no-underline"
+                        style={{
+                          color: '#f8fafc',
+                          textDecoration: shot.is_done ? 'line-through' : 'none',
+                        }}
+                      >
+                        {shot.description}
+                      </Link>
+                    </div>
                     <button
                       onClick={() => handleDelete(shot.id)}
                       aria-label="Delete shot"
