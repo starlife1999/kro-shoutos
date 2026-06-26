@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ClipboardList, Plus, Trash2, Check } from 'lucide-react'
 import PageHeader from '../../components/ui/PageHeader'
 import EmptyState from '../../components/ui/EmptyState'
@@ -254,9 +255,13 @@ export default function ShotList() {
                     >
                       {shot.is_done ? <Check size={14} /> : <span style={{ fontSize: 10 }}>○</span>}
                     </button>
-                    <span className="flex-1 text-sm text-white" style={{ color: '#f8fafc' }}>
+                    <Link
+                      to={`/shots/shoot/${shot.id}`}
+                      className="flex-1 text-sm text-white no-underline"
+                      style={{ color: '#f8fafc' }}
+                    >
                       {shot.description}
-                    </span>
+                    </Link>
                     <button
                       onClick={() => handleDelete(shot.id)}
                       aria-label="Delete shot"

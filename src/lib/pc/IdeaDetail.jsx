@@ -249,15 +249,16 @@ function ShotListTab({ ideaId }) {
               >
                 {shot.is_done ? <CheckCircle2 size={18} /> : <Circle size={18} />}
               </button>
-              <span
-                className="flex-1 text-sm"
+              <Link
+                to={`/shots/idea/${shot.id}`}
+                className="flex-1 text-sm no-underline"
                 style={{
                   color: shot.is_done ? '#475569' : '#f8fafc',
                   textDecoration: shot.is_done ? 'line-through' : 'none',
                 }}
               >
                 {shot.description}
-              </span>
+              </Link>
               <button
                 onClick={() => handleDelete(shot.id)}
                 style={{ color: '#ef4444', opacity: 0.6 }}
