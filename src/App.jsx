@@ -21,7 +21,7 @@ import Budget from './pages/pc/Budget'
 import RawPhotos from './pages/pc/RawPhotos'
 import AITools from './pages/pc/AITools'
 import ShotList from './lib/pc/ShotList'
-import ShotDetail from './lib/pc/ShotDetail'
+import ShotDetailPage from './lib/pc/ShotDetail'
 import MobilePage from './pages/mobile/MobilePage'
 
 function MobileRedirect() {
@@ -71,7 +71,7 @@ export default function App() {
           <Route path="/budget" element={<Budget />} />
           <Route path="/ai-tools" element={<AITools />} />
           <Route path="/shot-list" element={<ShotList />} />
-          <Route path="/shots/:type/:shotId" element={<ShotDetail />} />
+          <Route path="/shots/:type/:shotId" element={<ShotDetailPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
