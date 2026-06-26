@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, Trash2, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, X, Image as ImageIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
 export default function ShotDetail() {
@@ -9,6 +9,8 @@ export default function ShotDetail() {
   const [references, setReferences] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(null)
+  const [touchStartX, setTouchStartX] = useState(null)
 
   const fetchShot = useCallback(async () => {
     if (!shotId) return
@@ -49,34 +51,62 @@ export default function ShotDetail() {
   useEffect(() => { fetchReferences() }, [fetchReferences])
 
   const handleUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
     setUploading(true)
     try {
-      const filePath = `${shotId}/${Date.now()}-${file.name}`
-      const { error: uploadError } = await supabase.storage
-        .from('shot-references')
-        .upload(filePath, file)
+      for (const file of files) {
+        const filePath = `${shotId}/${Date.now()}-${file.name}`
+        const { error: uploadError } = await supabase.storage
+          .from('shot-references')
+          .upload(filePath, file)
 
-      if (uploadError) throw uploadError
+        if (uploadError) throw uploadError
 
-      const { data: urlData } = supabase.storage
-        .from('shot-references')
-        .getPublicUrl(filePath)
+        const { data: urlData } = supabase.storage
+          .from('shot-references')
+          .getPublicUrl(filePath)
 
-      const { error: insertError } = await supabase.from('shot_references').insert({
-        shot_id: shotId,
-        shot_type: type,
-        image_url: urlData.publicUrl,
-      })
+        const { error: insertError } = await supabase.from('shot_references').insert({
+          shot_id: shotId,
+          shot_type: type,
+          image_url: urlData.publicUrl,
+        })
 
-      if (insertError) throw insertError
+        if (insertError) throw insertError
+      }
       await fetchReferences()
     } catch (err) {
       alert('Upload failed: ' + err.message)
     } finally {
       setUploading(false)
       e.target.value = ''
+    }
+  }
+
+  const showPreviousImage = (e) => {
+    e?.stopPropagation()
+    setLightboxIndex((current) => (
+      current === null ? null : (current - 1 + references.length) % references.length
+    ))
+  }
+
+  const showNextImage = (e) => {
+    e?.stopPropagation()
+    setLightboxIndex((current) => (
+      current === null ? null : (current + 1) % references.length
+    ))
+  }
+
+  const handleLightboxTouchEnd = (e) => {
+    if (touchStartX === null || references.length < 2) return
+    const distance = touchStartX - e.changedTouches[0].clientX
+    setTouchStartX(null)
+    if (Math.abs(distance) < 40) return
+    if (distance > 0) {
+      showNextImage(e)
+    } else {
+      showPreviousImage(e)
     }
   }
 
@@ -122,9 +152,18 @@ export default function ShotDetail() {
       <div className="p-8">
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-bold text-white text-sm uppercase" style={{ letterSpacing: '0.08em' }}>Reference Images</h2>
-          <label className="kro-btn kro-btn-primary cursor-pointer">
-            <Upload size={14} /> {uploading ? 'Uploading...' : 'Upload Image'}
-            <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
+          <label style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: 'none' }}
+              onChange={handleUpload}
+              disabled={uploading}
+            />
+            <span className="kro-btn kro-btn-primary" style={{ opacity: uploading ? 0.7 : 1 }}>
+              <Plus size={14} /> {uploading ? 'Uploading...' : 'Add Reference Images'}
+            </span>
           </label>
         </div>
 
@@ -138,16 +177,26 @@ export default function ShotDetail() {
           </div>
         ) : (
           <div className="grid grid-cols-4 gap-3">
-            {references.map((ref) => (
+            {references.map((ref, index) => (
               <div key={ref.id} className="group relative">
-                <img
-                  src={ref.image_url}
-                  alt=""
-                  className="w-full h-40 object-cover rounded-xl"
-                  style={{ border: '1px solid #334155' }}
-                />
                 <button
-                  onClick={() => handleDelete(ref.id)}
+                  type="button"
+                  onClick={() => setLightboxIndex(index)}
+                  className="block w-full text-left"
+                  aria-label={`Open reference image ${index + 1}`}
+                >
+                  <img
+                    src={ref.image_url}
+                    alt=""
+                    className="w-full h-40 object-cover rounded-xl"
+                    style={{ border: '1px solid #334155' }}
+                  />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDelete(ref.id)
+                  }}
                   className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg"
                   style={{ background: 'rgba(0,0,0,0.7)', color: '#ef4444' }}
                   aria-label="Delete reference image"
@@ -159,6 +208,74 @@ export default function ShotDetail() {
           </div>
         )}
       </div>
+
+      {lightboxIndex !== null && references[lightboxIndex] && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            background: 'rgba(0,0,0,0.92)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onClick={() => setLightboxIndex(null)}
+          onTouchStart={(e) => setTouchStartX(e.touches[0].clientX)}
+          onTouchEnd={handleLightboxTouchEnd}
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setLightboxIndex(null)
+            }}
+            aria-label="Close image viewer"
+            className="absolute top-5 right-5 p-3 rounded-lg"
+            style={{ background: 'rgba(15,23,42,0.85)', color: '#f8fafc' }}
+          >
+            <X size={20} />
+          </button>
+
+          {references.length > 1 && (
+            <button
+              type="button"
+              onClick={showPreviousImage}
+              aria-label="Previous reference image"
+              className="absolute left-5 p-4 rounded-full"
+              style={{ background: 'rgba(15,23,42,0.85)', color: '#f8fafc' }}
+            >
+              <ChevronLeft size={28} />
+            </button>
+          )}
+
+          <img
+            src={references[lightboxIndex].image_url}
+            alt=""
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain' }}
+          />
+
+          {references.length > 1 && (
+            <button
+              type="button"
+              onClick={showNextImage}
+              aria-label="Next reference image"
+              className="absolute right-5 p-4 rounded-full"
+              style={{ background: 'rgba(15,23,42,0.85)', color: '#f8fafc' }}
+            >
+              <ChevronRight size={28} />
+            </button>
+          )}
+
+          <div
+            className="absolute bottom-5 rounded-full px-4 py-2 text-sm font-semibold"
+            style={{ background: 'rgba(15,23,42,0.85)', color: '#f8fafc' }}
+          >
+            {lightboxIndex + 1} of {references.length}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
