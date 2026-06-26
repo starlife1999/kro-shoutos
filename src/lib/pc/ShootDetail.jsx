@@ -167,7 +167,7 @@ function ShotListTab({ shootId }) {
               <Link
                 to={`/shots/shoot/${shot.id}`}
                 style={{ flex: 1, color: shot.is_done ? '#64748b' : '#f8fafc', textDecoration: shot.is_done ? 'line-through' : 'none', fontSize: 15 }}
-                onClick={(e) => { e.stopPropagation(); e.preventDefault() }}
+                onClick={(e) => e.stopPropagation()}
               >
                 {shot.description}
               </Link>
