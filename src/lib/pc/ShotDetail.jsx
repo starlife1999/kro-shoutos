@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, Trash2, Image } from 'lucide-react'
+import { ArrowLeft, Upload, Trash2, Image as ImageIcon } from 'lucide-react'
 import { supabase, uploadFile } from '../../lib/supabase'
 
 export default function ShotDetail() {
@@ -88,7 +88,7 @@ export default function ShotDetail() {
   const backPath = type === 'idea' ? '/ideas' : '/shot-list'
 
   return (
-    <div>
+    <div style={{ background: '#080d18', minHeight: '100vh' }}>
       {/* Header */}
       <div className="px-8 py-6" style={{ borderBottom: '1px solid #334155' }}>
         <Link
@@ -99,7 +99,7 @@ export default function ShotDetail() {
           <ArrowLeft size={12} /> Back to {type === 'idea' ? 'Ideas' : 'Shot List'}
         </Link>
         <div>
-          <h1 className="font-bold text-white" style={{ fontSize: '1.5rem' }}>{shot.description}</h1>
+          <h1 className="font-bold text-white" style={{ fontSize: '1.5rem' }}>{shot.description || shot.title}</h1>
           <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>
             {type === 'idea' ? 'Idea Shot' : 'Shoot Shot'} · {references.length} reference image{references.length !== 1 ? 's' : ''}
           </p>
@@ -118,7 +118,7 @@ export default function ShotDetail() {
 
         {references.length === 0 ? (
           <div className="kro-card flex flex-col items-center justify-center py-16">
-            <Image size={40} style={{ color: '#334155' }} />
+            <ImageIcon size={40} style={{ color: '#334155' }} />
             <p className="mt-4 font-bold text-sm text-white">No Reference Images</p>
             <p className="mt-1 text-xs" style={{ color: '#94a3b8' }}>
               Upload reference images for this shot.
@@ -138,6 +138,7 @@ export default function ShotDetail() {
                   onClick={() => handleDelete(ref.id)}
                   className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg"
                   style={{ background: 'rgba(0,0,0,0.7)', color: '#ef4444' }}
+                  aria-label="Delete reference image"
                 >
                   <Trash2 size={13} />
                 </button>
