@@ -524,13 +524,15 @@ function ShootsView() {
 }
 
 function ShootDetailView({ shoot, onBack }) {
+  const [activeTab, setActiveTab] = useState('Info')
+
   return (
     <div className="kro-mobile-page">
       <div className="kro-mobile-hero">
         <div className="min-w-0">
           <p className="kro-mobile-eyebrow">Shoot Detail</p>
-          <h1>{shoot.name}</h1>
-          <p>Details for this shoot.</p>
+          <h1>{shoot?.name || 'Shoot'}</h1>
+          <p>Tap a tab to explore everything.</p>
         </div>
         <button
           type="button"
@@ -542,58 +544,48 @@ function ShootDetailView({ shoot, onBack }) {
         </button>
       </div>
 
-      <section className="kro-mobile-card">
-        <div className="kro-mobile-card-header">
-          <div className="kro-mobile-card-icon">
-            <Camera size={24} />
-          </div>
-          <div className="min-w-0">
-            <h2>{shoot.name}</h2>
-            <p>Status: {shoot.status || 'planned'}</p>
-          </div>
-        </div>
-        <div className="kro-mobile-stats">
-          <div className="kro-mobile-stat">
-            <p>Date</p>
-            <strong style={{ color: '#ef4444' }}>{formatDate(shoot.date)}</strong>
-          </div>
-          <div className="kro-mobile-stat">
-            <p>Location</p>
-            <strong style={{ color: '#3b82f6' }}>{shoot.location || '—'}</strong>
-          </div>
-          <div className="kro-mobile-stat">
-            <p>Status</p>
-            <strong style={{ color: '#22c55e' }}>{shoot.status || 'planned'}</strong>
-          </div>
+      <section
+        className="kro-mobile-card"
+        style={{ padding: 12, borderRadius: 12 }}
+      >
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap', overflowX: 'auto' }}>
+          {['Info', 'Shot List', 'Outfits', 'Mood Board', 'Team'].map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setActiveTab(t)}
+              style={{
+                minHeight: 48,
+                padding: '0 14px',
+                borderRadius: 999,
+                fontSize: 16,
+                fontWeight: 900,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                background:
+                  activeTab === t ? 'rgba(239,68,68,0.15)' : 'transparent',
+                color: activeTab === t ? '#ef4444' : '#94a3b8',
+                border: `1px solid ${
+                  activeTab === t ? 'rgba(239,68,68,0.35)' : '#334155'
+                }`,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {t}
+            </button>
+          ))}
         </div>
       </section>
 
-      {shoot.notes && (
-        <section className="kro-mobile-card">
-          <div className="kro-mobile-card-header">
-            <div
-              className="kro-mobile-card-icon"
-              style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}
-            >
-              <Sparkles size={24} />
-            </div>
-            <div className="min-w-0">
-              <h2>Notes</h2>
-              <p>Concept & mood</p>
-            </div>
-          </div>
-          <p
-            style={{
-              color: '#f8fafc',
-              fontSize: 16,
-              lineHeight: 1.5,
-              margin: 0,
-            }}
-          >
-            {shoot.notes}
-          </p>
-        </section>
-      )}
+      <ErrorBanner message={null} />
+
+      {activeTab === 'Info' && <ShootInfoTab shoot={shoot} />}
+      {activeTab === 'Shot List' && <ShootShotListTab shootId={shoot.id} />}
+      {activeTab === 'Outfits' && <ShootOutfitsTab shootId={shoot.id} />}
+      {activeTab === 'Mood Board' && <ShootMoodBoardTab shootId={shoot.id} />}
+      {activeTab === 'Team' && <ShootTeamTab shootId={shoot.id} />}
 
       <button
         type="button"
@@ -606,6 +598,625 @@ function ShootDetailView({ shoot, onBack }) {
     </div>
   )
 }
+
+function ShootInfoTab({ shoot }) {
+  return (
+    <section className="kro-mobile-card">
+      <div className="kro-mobile-card-header">
+        <div className="kro-mobile-card-icon">
+          <Camera size={24} />
+        </div>
+        <div className="min-w-0">
+          <h2>Info</h2>
+          <p>Core details for this shoot</p>
+        </div>
+      </div>
+
+      <div className="kro-mobile-stats">
+        <div className="kro-mobile-stat">
+          <p>Name</p>
+          <strong style={{ color: '#f8fafc', fontSize: 20 }}>{shoot?.name || '—'}</strong>
+        </div>
+        <div className="kro-mobile-stat">
+          <p>Date</p>
+          <strong style={{ color: '#ef4444' }}>{formatDate(shoot?.date)}</strong>
+        </div>
+        <div className="kro-mobile-stat">
+          <p>Location</p>
+          <strong style={{ color: '#3b82f6' }}>{shoot?.location || '—'}</strong>
+        </div>
+        <div className="kro-mobile-stat">
+          <p>Status</p>
+          <strong style={{ color: '#22c55e' }}>{shoot?.status || 'planned'}</strong>
+        </div>
+      </div>
+
+      {shoot?.notes ? (
+        <div style={{ marginTop: 16 }}>
+          <div className="kro-mobile-card-header" style={{ marginBottom: 10 }}>
+            <div
+              className="kro-mobile-card-icon"
+              style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}
+            >
+              <Sparkles size={24} />
+            </div>
+            <div className="min-w-0">
+              <h2>Notes</h2>
+              <p>Concept, mood & context</p>
+            </div>
+          </div>
+          <p
+            style={{
+              color: '#f8fafc',
+              fontSize: 16,
+              lineHeight: 1.5,
+              margin: 0,
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {shoot.notes}
+          </p>
+        </div>
+      ) : (
+        <div style={{ marginTop: 16, color: '#94a3b8', fontSize: 16, fontWeight: 700 }}>
+          No notes yet.
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ShootShotListTab({ shootId }) {
+  const [shots, setShots] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [description, setDescription] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    supabase
+      .from('shot_list')
+      .select('id, shoot_id, description, is_done, created_at')
+      .eq('shoot_id', shootId)
+      .order('created_at', { ascending: true })
+      .then(({ data, error: err }) => {
+        if (cancelled) return
+        setLoading(false)
+        if (err) {
+          setError(err.message)
+          return
+        }
+        setShots(data || [])
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [shootId])
+
+  const refetch = async () => {
+    const { data, error: err } = await supabase
+      .from('shot_list')
+      .select('id, shoot_id, description, is_done, created_at')
+      .eq('shoot_id', shootId)
+      .order('created_at', { ascending: true })
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setShots(data || [])
+  }
+
+  const handleAdd = async (e) => {
+    e.preventDefault()
+    const trimmed = description.trim()
+    if (!trimmed) {
+      setError('Please enter a shot description')
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+    const { error: err } = await supabase
+      .from('shot_list')
+      .insert({ shoot_id: shootId, description: trimmed, is_done: false })
+
+    setSaving(false)
+
+    if (err) {
+      setError(err.message)
+      return
+    }
+
+    setDescription('')
+    await refetch()
+  }
+
+  const handleToggleDone = async (shot) => {
+    const { error: err } = await supabase
+      .from('shot_list')
+      .update({ is_done: !shot.is_done })
+      .eq('id', shot.id)
+
+    if (err) {
+      setError(err.message)
+      return
+    }
+
+    setShots((prev) =>
+      prev.map((s) => (s.id === shot.id ? { ...s, is_done: !s.is_done } : s))
+    )
+  }
+
+  const handleDelete = async (id) => {
+    await supabase.from('shot_list').delete().eq('id', id)
+    await refetch()
+  }
+
+  const doneCount = shots.filter((s) => s.is_done).length
+
+  return (
+    <section className="kro-mobile-card">
+      <div className="kro-mobile-card-header">
+        <div className="kro-mobile-card-icon">
+          <ListChecks size={24} />
+        </div>
+        <div className="min-w-0">
+          <h2>Shot List</h2>
+          <p>
+            {doneCount} of {shots.length} complete
+          </p>
+        </div>
+      </div>
+
+      <ErrorBanner message={error} />
+
+      <form
+        onSubmit={handleAdd}
+        style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+      >
+        <label className="kro-label" style={{ margin: 0 }}>
+          Add a shot
+        </label>
+        <input
+          className="kro-input"
+          placeholder="Describe the next shot…"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          disabled={saving}
+        />
+        <button
+          type="submit"
+          className="kro-btn kro-btn-primary"
+          style={{ minHeight: 56, justifyContent: 'center' }}
+          disabled={saving || !description.trim()}
+        >
+          <Plus size={18} /> {saving ? 'Adding…' : 'Add Shot'}
+        </button>
+      </form>
+
+      <div style={{ marginTop: 16 }} />
+
+      {loading ? (
+        <p style={{ color: '#94a3b8', fontSize: 16 }}>Loading shots…</p>
+      ) : shots.length === 0 ? (
+        <p style={{ color: '#94a3b8', fontSize: 16, fontWeight: 700 }}>
+          No shots yet — add your first above.
+        </p>
+      ) : (
+        <div className="kro-mobile-list" style={{ marginTop: 12 }}>
+          {shots.map((shot) => (
+            <div
+              key={shot.id}
+              className="kro-mobile-list-item"
+              style={{
+                opacity: shot.is_done ? 0.6 : 1,
+                textDecoration: shot.is_done ? 'line-through' : 'none',
+                paddingRight: 12,
+                alignItems: 'center',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => handleToggleDone(shot)}
+                aria-label={shot.is_done ? 'Mark as not done' : 'Mark as done'}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 12,
+                  background: shot.is_done
+                    ? 'rgba(34,197,94,0.18)'
+                    : 'rgba(148,163,184,0.12)',
+                  border: `1px solid ${shot.is_done ? 'rgba(34,197,94,0.5)' : '#334155'}`,
+                  color: shot.is_done ? '#22c55e' : '#94a3b8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flex: '0 0 56px',
+                  cursor: 'pointer',
+                }}
+              >
+                {shot.is_done ? <Check size={24} /> : <span style={{ fontSize: 22 }}>○</span>}
+              </button>
+
+              <span
+                style={{
+                  flex: 1,
+                  color: '#f8fafc',
+                  fontSize: 17,
+                  fontWeight: 600,
+                  lineHeight: 1.35,
+                  paddingRight: 12,
+                }}
+              >
+                {shot.description}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => handleDelete(shot.id)}
+                aria-label="Delete shot"
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 12,
+                  background: 'rgba(239,68,68,0.1)',
+                  border: '1px solid rgba(239,68,68,0.25)',
+                  color: '#ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flex: '0 0 56px',
+                  cursor: 'pointer',
+                }}
+              >
+                <Trash2 size={22} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ShootOutfitsTab({ shootId }) {
+  const [outfits, setOutfits] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    supabase
+      .from('outfits')
+      .select('id, shoot_id, name, description, notes, image_url')
+      .eq('shoot_id', shootId)
+      .order('id', { ascending: true })
+      .then(({ data, error: err }) => {
+        if (cancelled) return
+        setLoading(false)
+        if (err) {
+          setError(err.message)
+          return
+        }
+        setOutfits(data || [])
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [shootId])
+
+  return (
+    <section className="kro-mobile-card">
+      <div className="kro-mobile-card-header">
+        <div className="kro-mobile-card-icon" style={{ background: 'rgba(59,130,246,0.12)', color: '#60a5fa' }}>
+          <Sparkles size={24} />
+        </div>
+        <div className="min-w-0">
+          <h2>Outfits</h2>
+          <p>{outfits.length} outfit{outfits.length === 1 ? '' : 's'}</p>
+        </div>
+      </div>
+
+      <ErrorBanner message={error} />
+
+      {loading ? (
+        <p style={{ color: '#94a3b8', fontSize: 16 }}>Loading outfits…</p>
+      ) : outfits.length === 0 ? (
+        <p style={{ color: '#94a3b8', fontSize: 16, fontWeight: 700 }}>
+          No outfits yet.
+        </p>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: 12,
+          }}
+        >
+          {outfits.map((o) => (
+            <div
+              key={o.id}
+              style={{
+                border: '1px solid #334155',
+                borderRadius: 12,
+                background: '#0f172a',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: '100%',
+                  height: 140,
+                  background: '#0f172a',
+                  borderBottom: '1px solid #334155',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {o.image_url ? (
+                  <img
+                    src={o.image_url}
+                    alt={o.name || 'Outfit'}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div style={{ color: '#64748b', fontWeight: 900, fontSize: 16 }}>
+                    No Image
+                  </div>
+                )}
+              </div>
+              <div style={{ padding: 12 }}>
+                <div style={{ color: '#f8fafc', fontWeight: 900, fontSize: 16, lineHeight: 1.2 }}>
+                  {o.name || 'Untitled'}
+                </div>
+                {o.description && (
+                  <div style={{ color: '#94a3b8', fontWeight: 700, fontSize: 14, marginTop: 6, lineHeight: 1.35 }}>
+                    {o.description}
+                  </div>
+                )}
+                {o.notes && (
+                  <div style={{ color: '#64748b', fontWeight: 700, fontSize: 13, marginTop: 6, lineHeight: 1.35 }}>
+                    {o.notes}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ShootMoodBoardTab({ shootId }) {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    supabase
+      .from('mood_board')
+      .select('id, shoot_id, image_url')
+      .eq('shoot_id', shootId)
+      .order('id', { ascending: true })
+      .then(({ data, error: err }) => {
+        if (cancelled) return
+        setLoading(false)
+        if (err) {
+          setError(err.message)
+          return
+        }
+        setItems(data || [])
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [shootId])
+
+  return (
+    <section className="kro-mobile-card">
+      <div className="kro-mobile-card-header">
+        <div className="kro-mobile-card-icon" style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>
+          <Lightbulb size={24} />
+        </div>
+        <div className="min-w-0">
+          <h2>Mood Board</h2>
+          <p>{items.length} image{items.length === 1 ? '' : 's'}</p>
+        </div>
+      </div>
+
+      <ErrorBanner message={error} />
+
+      {loading ? (
+        <p style={{ color: '#94a3b8', fontSize: 16 }}>Loading mood board…</p>
+      ) : items.length === 0 ? (
+        <p style={{ color: '#94a3b8', fontSize: 16, fontWeight: 700 }}>
+          No mood board images yet.
+        </p>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: 10,
+          }}
+        >
+          {items.map((it) => (
+            <div
+              key={it.id}
+              style={{
+                width: '100%',
+                aspectRatio: '1 / 1',
+                borderRadius: 12,
+                overflow: 'hidden',
+                border: '1px solid #334155',
+                background: '#0f172a',
+              }}
+            >
+              {it.image_url ? (
+                <img
+                  src={it.image_url}
+                  alt="Mood board"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <div style={{ color: '#64748b', fontWeight: 900, fontSize: 14 }}>—</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ShootTeamTab({ shootId }) {
+  const [people, setPeople] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    supabase
+      .from('shoot_team')
+      .select('id, shoot_id, team_id, team(name, role, phone, email, notes)')
+      .eq('shoot_id', shootId)
+      .order('id', { ascending: true })
+      .then(({ data, error: err }) => {
+        if (cancelled) return
+        setLoading(false)
+        if (err) {
+          setError(err.message)
+          return
+        }
+        const rows = data || []
+        setPeople(rows)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [shootId])
+
+  return (
+    <section className="kro-mobile-card">
+      <div className="kro-mobile-card-header">
+        <div className="kro-mobile-card-icon" style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}>
+          <Users size={24} />
+        </div>
+        <div className="min-w-0">
+          <h2>Team</h2>
+          <p>{people.length} contact{people.length === 1 ? '' : 's'}</p>
+        </div>
+      </div>
+
+      <ErrorBanner message={error} />
+
+      {loading ? (
+        <p style={{ color: '#94a3b8', fontSize: 16 }}>Loading team…</p>
+      ) : people.length === 0 ? (
+        <p style={{ color: '#94a3b8', fontSize: 16, fontWeight: 700 }}>
+          No team contacts added.
+        </p>
+      ) : (
+        <div className="kro-mobile-list">
+          {people.map((st) => {
+            const t = st.team || {}
+            return (
+              <div
+                key={st.id || st.team_id}
+                className="kro-mobile-list-item"
+                style={{ alignItems: 'flex-start' }}
+              >
+                <div
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 12,
+                    background: '#ef4444',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 900,
+                    fontSize: 20,
+                    flex: '0 0 52px',
+                  }}
+                >
+                  {(t.name || 'K').slice(0, 1).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ color: '#f8fafc', fontWeight: 900, fontSize: 17, lineHeight: 1.2 }}>{t.name || 'Unknown'}</div>
+                  {t.role && (
+                    <div style={{ color: '#94a3b8', fontWeight: 800, fontSize: 15, lineHeight: 1.3 }}>{t.role}</div>
+                  )}
+                  {t.phone && (
+                    <a
+                      href={`tel:${t.phone}`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontSize: 16,
+                        color: '#3b82f6',
+                        fontWeight: 900,
+                        textDecoration: 'none',
+                        minHeight: 36,
+                      }}
+                    >
+                      <Phone size={16} /> {t.phone}
+                    </a>
+                  )}
+                  {t.email && (
+                    <a
+                      href={`mailto:${t.email}`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontSize: 16,
+                        color: '#3b82f6',
+                        fontWeight: 900,
+                        textDecoration: 'none',
+                        minHeight: 36,
+                      }}
+                    >
+                      <Mail size={16} /> {t.email}
+                    </a>
+                  )}
+                  {t.notes && (
+                    <div style={{ color: '#64748b', fontWeight: 800, fontSize: 14, lineHeight: 1.4, marginTop: 2 }}>
+                      {t.notes}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
+  )
+}
+
 
 /* ============== SHOT LIST ============== */
 function ShotListView() {

@@ -1,10 +1,13 @@
-# TODO
-- [x] Inspect Supabase client and confirm current URL/key wiring.
-- [x] Fix `src/lib/supabase.js` to use `supabaseUrl` + `supabaseKey` variable names and provided anon key.
-- [x] Fix every insert payload for tables: `shoots`, `campaigns`, `ideas`, `team`, `budget_items`, `locations` so keys match exact column list.
+- [ ] Implement full mobile `ShootDetailView` with tabs (Info, Shot List, Outfits, Mood Board, Team) in `src/pages/mobile/MobilePage.jsx`
+- [ ] Wire Shoots tap -> selected shoot renders `ShootDetailView`
+- [ ] Add back button to return to Shoots list
+- [ ] Add Supabase CRUD for shot_list in Shot List tab (fetch/add/toggle done/delete)
+- [ ] Fetch and render outfits cards from outfits table
+- [ ] Fetch and render mood board image grid from mood_board table
+- [ ] Fetch and render team contacts from shoot_team joined with team
+- [ ] Ensure mobile-friendly touch targets and dark KRO PK styling
+- [ ] Run git add/commit/push: "add full mobile shoot detail view"
 
 
-- [x] Add visible error display on every page that saves (shows Supabase error message on screen).
 
-- [x] Run `npm run build:electron`.
-- [x] `git add . && git commit -m "fix saving and buttons" && git push`.
+
