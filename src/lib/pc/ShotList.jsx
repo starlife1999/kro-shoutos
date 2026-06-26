@@ -237,42 +237,66 @@ export default function ShotList() {
                 {shots.map((shot) => (
                   <li
                     key={shot.id}
-                    className="kro-card flex items-center gap-3"
                     style={{
-                      opacity: shot.is_done ? 0.6 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '12px 16px',
+                      background: '#1e293b',
+                      borderRadius: 10,
+                      marginBottom: 8,
                     }}
                   >
                     <button
-                      onClick={() => handleToggle(shot)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        handleToggle(shot)
+                      }}
                       aria-label={shot.is_done ? 'Mark as not done' : 'Mark as done'}
-                      className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md"
                       style={{
-                        background: shot.is_done ? 'rgba(34,197,94,0.18)' : 'rgba(148,163,184,0.12)',
-                        border: `1px solid ${shot.is_done ? 'rgba(34,197,94,0.5)' : '#334155'}`,
-                        color: shot.is_done ? '#22c55e' : '#94a3b8',
+                        flexShrink: 0,
+                        width: 28,
+                        height: 28,
+                        borderRadius: '50%',
+                        border: '2px solid #334155',
+                        background: shot.is_done ? '#22c55e' : 'transparent',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
                     >
-                      {shot.is_done ? <Check size={14} /> : <span style={{ fontSize: 10 }}>○</span>}
+                      {shot.is_done && <Check size={14} color="#fff" />}
                     </button>
-                    <div className="flex-1 min-w-0">
-                      <Link
-                        to={`/shots/shoot/${shot.id}`}
-                        className="inline text-sm text-white no-underline"
-                        style={{
-                          color: '#f8fafc',
-                          textDecoration: shot.is_done ? 'line-through' : 'none',
-                        }}
-                      >
-                        {shot.description}
-                      </Link>
-                    </div>
-                    <button
-                      onClick={() => handleDelete(shot.id)}
-                      aria-label="Delete shot"
-                      className="p-2 rounded-lg"
-                      style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)' }}
+                    <Link
+                      to={`/shots/shoot/${shot.id}`}
+                      style={{
+                        flex: 1,
+                        color: shot.is_done ? '#64748b' : '#f8fafc',
+                        textDecoration: shot.is_done ? 'line-through' : 'none',
+                        fontSize: 15,
+                      }}
                     >
-                      <Trash2 size={14} />
+                      {shot.description}
+                    </Link>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        handleDelete(shot.id)
+                      }}
+                      aria-label="Delete shot"
+                      style={{
+                        flexShrink: 0,
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: '#ef4444',
+                        padding: 4,
+                      }}
+                    >
+                      <Trash2 size={16} />
                     </button>
                   </li>
                 ))}
