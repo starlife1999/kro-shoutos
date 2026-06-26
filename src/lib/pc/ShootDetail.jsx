@@ -164,9 +164,13 @@ function ShotListTab({ shootId }) {
               <button onClick={() => toggleDone(shot)} style={{ color: shot.is_done ? '#22c55e' : '#475569', flexShrink: 0 }}>
                 {shot.is_done ? <CheckCircle2 size={18} /> : <Circle size={18} />}
               </button>
-              <span className="flex-1 text-sm" style={{ color: shot.is_done ? '#475569' : '#f8fafc', textDecoration: shot.is_done ? 'line-through' : 'none' }}>
+              <Link
+                to={`/shots/shoot/${shot.id}`}
+                style={{ flex: 1, color: shot.is_done ? '#64748b' : '#f8fafc', textDecoration: shot.is_done ? 'line-through' : 'none', fontSize: 15 }}
+                onClick={(e) => { e.stopPropagation(); e.preventDefault() }}
+              >
                 {shot.description}
-              </span>
+              </Link>
               <button onClick={() => remove(shot.id)} style={{ color: '#ef4444', opacity: 0.6 }} className="hover:opacity-100">
                 <Trash2 size={14} />
               </button>
