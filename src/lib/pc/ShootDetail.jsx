@@ -233,6 +233,7 @@ function OutfitsTab({ shootId }) {
 function MoodBoardTab({ shootId }) {
   const { data: items, insert, remove } = useTable('mood_board', { shoot_id: shootId })
   const [uploading, setUploading] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(null)
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0]
@@ -256,12 +257,62 @@ function MoodBoardTab({ shootId }) {
       </div>
       {items.length === 0 ? <EmptyState icon={Image} title="No Mood Board Images" description="Upload reference images for this shoot." /> : (
         <div className="grid grid-cols-4 gap-3">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <div key={item.id} className="group relative">
-              <img src={item.image_url} alt="" className="w-full h-40 object-cover rounded-xl" style={{ border: '1px solid #334155' }} />
-              <button onClick={() => remove(item.id)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.7)', color: '#ef4444' }}><Trash2 size={13} /></button>
+              <img
+                src={item.image_url}
+                alt=""
+                className="w-full h-40 object-cover rounded-xl"
+                style={{ border: '1px solid #334155', cursor: 'pointer' }}
+                onClick={() => setLightboxIndex(index)}
+              />
+              <button
+                onClick={() => remove(item.id)}
+                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg"
+                style={{ background: 'rgba(0,0,0,0.7)', color: '#ef4444' }}
+              >
+                <Trash2 size={13} />
+              </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {lightboxIndex !== null && (
+        <div
+          onClick={() => setLightboxIndex(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.93)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); setLightboxIndex(i => Math.max(0, i - 1)) }}
+            style={{ position: 'absolute', left: 20, background: 'none', border: 'none', color: '#fff', fontSize: 48, cursor: 'pointer', lineHeight: 1 }}
+          >
+            ‹
+          </button>
+
+          <img
+            src={items[lightboxIndex]?.image_url}
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8 }}
+          />
+
+          <button
+            onClick={(e) => { e.stopPropagation(); setLightboxIndex(i => Math.min(items.length - 1, i + 1)) }}
+            style={{ position: 'absolute', right: 20, background: 'none', border: 'none', color: '#fff', fontSize: 48, cursor: 'pointer', lineHeight: 1 }}
+          >
+            ›
+          </button>
+
+          <div style={{ position: 'absolute', bottom: 20, color: '#94a3b8', fontSize: 14 }}>
+            {lightboxIndex + 1} of {items.length}
+          </div>
+
+          <button
+            onClick={() => setLightboxIndex(null)}
+            style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#fff', fontSize: 24, cursor: 'pointer' }}
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>
