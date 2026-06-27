@@ -177,7 +177,14 @@ export default function ShotDetail() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-3">
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: 12,
+              marginTop: 16,
+            }}
+          >
             {references.map((ref, index) => (
               <div key={ref.id} className="group relative">
                 <button
@@ -188,9 +195,17 @@ export default function ShotDetail() {
                 >
                   <img
                     src={ref.image_url}
+                    onClick={() => setLightboxIndex(index)}
                     alt=""
-                    className="w-full h-40 object-cover rounded-xl"
-                    style={{ border: '1px solid #334155' }}
+                    style={{
+                      width: '100%',
+                      height: 220,
+                      objectFit: 'cover',
+                      borderRadius: 12,
+                      cursor: 'pointer',
+                      display: 'block',
+                      border: '1px solid #334155',
+                    }}
                   />
                 </button>
                 <button
