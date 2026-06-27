@@ -55,8 +55,9 @@ export default function ShotDetail() {
     if (files.length === 0) return
     setUploading(true)
     try {
-      for (const file of files) {
-        const filePath = `${shotId}/${Date.now()}-${file.name}`
+      await Promise.all(files.map(async (file) => {
+        const filePath = `${shotId}/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`
+
         const { error: uploadError } = await supabase.storage
           .from('shot-references')
           .upload(filePath, file)
@@ -74,7 +75,7 @@ export default function ShotDetail() {
         })
 
         if (insertError) throw insertError
-      }
+      }))
       await fetchReferences()
     } catch (err) {
       alert('Upload failed: ' + err.message)
@@ -162,7 +163,7 @@ export default function ShotDetail() {
               disabled={uploading}
             />
             <span className="kro-btn kro-btn-primary" style={{ opacity: uploading ? 0.7 : 1 }}>
-              <Plus size={14} /> {uploading ? 'Uploading...' : 'Add Reference Images'}
+              <Plus size={14} /> {uploading ? 'Uploading...' : 'Upload Images'}
             </span>
           </label>
         </div>

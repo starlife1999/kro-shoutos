@@ -17,15 +17,22 @@ export default function MoodBoard() {
   }, [])
 
   const handleUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file || !shootId) return
+    const files = Array.from(e.target.files || [])
+    if (!files.length || !shootId) return
     setUploading(true)
     try {
-      const path = `${shootId}/${Date.now()}-${file.name}`
-      const url = await uploadFile('mood-board', path, file)
-      await insert({ shoot_id: shootId, image_url: url })
-    } catch (err) { alert('Upload failed: ' + err.message) }
-    finally { setUploading(false) ; e.target.value = '' }
+      await Promise.all(files.map(async (file) => {
+        const path = `${shootId}/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`
+        const url = await uploadFile('mood-board', path, file)
+        await insert({ shoot_id: shootId, image_url: url })
+      }))
+      await refetch()
+    } catch (err) {
+      alert('Upload failed: ' + err.message)
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
   }
 
   return (
@@ -39,8 +46,15 @@ export default function MoodBoard() {
             </select>
             {shootId && (
               <label className="kro-btn kro-btn-primary cursor-pointer">
-                <Upload size={14} /> {uploading ? 'Uploading...' : 'Upload'}
-                <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
+                <Upload size={14} /> {uploading ? 'Uploading...' : 'Upload Images'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={handleUpload}
+                  disabled={uploading}
+                />
               </label>
             )}
           </div>

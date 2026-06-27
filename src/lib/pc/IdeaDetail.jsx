@@ -461,16 +461,18 @@ function MoodBoardTab({ ideaId }) {
   useEffect(() => { fetchItems() }, [fetchItems])
 
   const handleUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
     setUploading(true)
     try {
-      const path = `${ideaId}/${Date.now()}-${file.name}`
-      const url = await uploadFile('idea-mood-board', path, file)
-      const { error: err } = await supabase
-        .from('idea_mood_board')
-        .insert({ idea_id: ideaId, image_url: url })
-      if (err) throw err
+      await Promise.all(files.map(async (file) => {
+        const path = `${ideaId}/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`
+        const url = await uploadFile('idea-mood-board', path, file)
+        const { error: err } = await supabase
+          .from('idea_mood_board')
+          .insert({ idea_id: ideaId, image_url: url })
+        if (err) throw err
+      }))
       await fetchItems()
     } catch (err) {
       alert('Upload failed: ' + err.message)
@@ -498,8 +500,15 @@ function MoodBoardTab({ ideaId }) {
     <div>
       <div className="flex justify-end mb-6">
         <label className="kro-btn kro-btn-primary cursor-pointer">
-          <Upload size={14} /> {uploading ? 'Uploading...' : 'Upload Image'}
-          <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
+          <Upload size={14} /> {uploading ? 'Uploading...' : 'Upload Images'}
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleUpload}
+            disabled={uploading}
+          />
         </label>
       </div>
       {loading ? (
