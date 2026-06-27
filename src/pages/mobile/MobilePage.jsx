@@ -524,7 +524,18 @@ function ShootsView() {
 }
 
 function ShootDetailView({ shoot, onBack }) {
-  const [activeTab, setActiveTab] = useState('Info')
+  const [activeTab, setActiveTab] = useState('I')
+
+  const tabs = useMemo(
+    () => [
+      { key: 'I', label: 'I', view: 'info' },
+      { key: 'S', label: 'S', view: 'shot-list' },
+      { key: 'O', label: 'O', view: 'outfits' },
+      { key: 'M', label: 'M', view: 'mood-board' },
+      { key: 'T', label: 'T', view: 'team' },
+    ],
+    []
+  )
 
   return (
     <div className="kro-mobile-page">
@@ -549,11 +560,11 @@ function ShootDetailView({ shoot, onBack }) {
         style={{ padding: 12, borderRadius: 12 }}
       >
         <div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap', overflowX: 'auto' }}>
-          {['Info', 'Shot List', 'Outfits', 'Mood Board', 'Team'].map((t) => (
+          {tabs.map((t) => (
             <button
-              key={t}
+              key={t.key}
               type="button"
-              onClick={() => setActiveTab(t)}
+              onClick={() => setActiveTab(t.key)}
               style={{
                 minHeight: 48,
                 padding: '0 14px',
@@ -563,17 +574,17 @@ function ShootDetailView({ shoot, onBack }) {
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase',
                 background:
-                  activeTab === t ? 'rgba(239,68,68,0.15)' : 'transparent',
-                color: activeTab === t ? '#ef4444' : '#94a3b8',
+                  activeTab === t.key ? 'rgba(239,68,68,0.15)' : 'transparent',
+                color: activeTab === t.key ? '#ef4444' : '#94a3b8',
                 border: `1px solid ${
-                  activeTab === t ? 'rgba(239,68,68,0.35)' : '#334155'
+                  activeTab === t.key ? 'rgba(239,68,68,0.35)' : '#334155'
                 }`,
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 whiteSpace: 'nowrap',
               }}
             >
-              {t}
+              {t.label}
             </button>
           ))}
         </div>
@@ -581,11 +592,11 @@ function ShootDetailView({ shoot, onBack }) {
 
       <ErrorBanner message={null} />
 
-      {activeTab === 'Info' && <ShootInfoTab shoot={shoot} />}
-      {activeTab === 'Shot List' && <ShootShotListTab shootId={shoot.id} />}
-      {activeTab === 'Outfits' && <ShootOutfitsTab shootId={shoot.id} />}
-      {activeTab === 'Mood Board' && <ShootMoodBoardTab shootId={shoot.id} />}
-      {activeTab === 'Team' && <ShootTeamTab shootId={shoot.id} />}
+      {activeTab === 'I' && <ShootInfoTab shoot={shoot} />}
+      {activeTab === 'S' && <ShootShotListTab shootId={shoot.id} />}
+      {activeTab === 'O' && <ShootOutfitsTab shootId={shoot.id} />}
+      {activeTab === 'M' && <ShootMoodBoardTab shootId={shoot.id} />}
+      {activeTab === 'T' && <ShootTeamTab shootId={shoot.id} />}
 
       <button
         type="button"
@@ -822,7 +833,10 @@ function ShootShotListTab({ shootId }) {
             >
               <button
                 type="button"
-                onClick={() => handleToggleDone(shot)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleToggleDone(shot)
+                }}
                 aria-label={shot.is_done ? 'Mark as not done' : 'Mark as done'}
                 style={{
                   width: 56,
@@ -844,13 +858,18 @@ function ShootShotListTab({ shootId }) {
               </button>
 
               <span
+                onClick={() => {
+                  window.location.hash = `/shots/shoot/${shot.id}`
+                }}
                 style={{
                   flex: 1,
-                  color: '#f8fafc',
+                  cursor: 'pointer',
+                  color: shot.is_done ? '#64748b' : '#f8fafc',
                   fontSize: 17,
                   fontWeight: 600,
                   lineHeight: 1.35,
                   paddingRight: 12,
+                  textDecoration: shot.is_done ? 'line-through' : 'none',
                 }}
               >
                 {shot.description}
@@ -858,7 +877,10 @@ function ShootShotListTab({ shootId }) {
 
               <button
                 type="button"
-                onClick={() => handleDelete(shot.id)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDelete(shot.id)
+                }}
                 aria-label="Delete shot"
                 style={{
                   width: 56,
@@ -1002,6 +1024,7 @@ function ShootMoodBoardTab({ shootId }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [lightboxIndex, setLightboxIndex] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -1056,7 +1079,7 @@ function ShootMoodBoardTab({ shootId }) {
             gap: 10,
           }}
         >
-          {items.map((it) => (
+          {items.map((it, index) => (
             <div
               key={it.id}
               style={{
@@ -1072,13 +1095,104 @@ function ShootMoodBoardTab({ shootId }) {
                 <img
                   src={it.image_url}
                   alt="Mood board"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onClick={() => setLightboxIndex(index)}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    cursor: 'pointer',
+                  }}
                 />
               ) : (
                 <div style={{ color: '#64748b', fontWeight: 900, fontSize: 14 }}>—</div>
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {lightboxIndex !== null && (
+        <div
+          onClick={() => setLightboxIndex(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            background: 'rgba(0,0,0,0.95)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setLightboxIndex((i) => Math.max(0, i - 1))
+            }}
+            style={{
+              position: 'absolute',
+              left: 16,
+              background: 'none',
+              border: 'none',
+              color: '#fff',
+              fontSize: 48,
+              cursor: 'pointer',
+            }}
+          >
+            ‹
+          </button>
+          <img
+            src={items[lightboxIndex]?.image_url}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '95vw',
+              maxHeight: '90vh',
+              objectFit: 'contain',
+              borderRadius: 8,
+            }}
+          />
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setLightboxIndex((i) => Math.min(items.length - 1, i + 1))
+            }}
+            style={{
+              position: 'absolute',
+              right: 16,
+              background: 'none',
+              border: 'none',
+              color: '#fff',
+              fontSize: 48,
+              cursor: 'pointer',
+            }}
+          >
+            ›
+          </button>
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 24,
+              color: '#94a3b8',
+              fontSize: 14,
+            }}
+          >
+            {lightboxIndex + 1} of {items.length}
+          </div>
+          <button
+            onClick={() => setLightboxIndex(null)}
+            style={{
+              position: 'absolute',
+              top: 20,
+              right: 20,
+              background: 'none',
+              border: 'none',
+              color: '#fff',
+              fontSize: 24,
+              cursor: 'pointer',
+            }}
+          >
+            ✕
+          </button>
         </div>
       )}
     </section>
