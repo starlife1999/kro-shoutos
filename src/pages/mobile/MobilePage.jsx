@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { LocalNotifications } from '@capacitor/local-notifications'
-import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
 import {
   Camera as CameraIcon,
   Plus,
@@ -20,11 +18,38 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
+let Camera = null
+let CameraResultType = null
+let CameraSource = null
+let LocalNotifications = null
+
+if (typeof window !== 'undefined') {
+  try {
+    const camModule = require('@capacitor/camera')
+    Camera = camModule.Camera
+    CameraResultType = camModule.CameraResultType
+    CameraSource = camModule.CameraSource
+  } catch (e) {
+    console.warn('Camera plugin not available:', e.message)
+  }
+  
+  try {
+    const notifModule = require('@capacitor/local-notifications')
+    LocalNotifications = notifModule.LocalNotifications
+  } catch (e) {
+    console.warn('LocalNotifications plugin not available:', e.message)
+  }
+}
+
 const IDEA_CATEGORIES = ['fashion', 'portrait', 'product', 'editorial']
 const NOTIF_PERMISSION_KEY = 'kro_shootos_notif_permission'
 const CACHED_SHOOTS_KEY = 'kro_cached_shoots'
 
 async function scheduleLocalNotifications() {
+  if (!LocalNotifications) {
+    console.warn('LocalNotifications not available, skipping schedule')
+    return
+  }
   const { data: shoots } = await supabase
     .from('shoots')
     .select('id, name, date')
@@ -206,6 +231,10 @@ function HomeView() {
   const [notifStatus, setNotifStatus] = useState(() => getStoredNotifPermission())
 
   const handleRequestNotifications = async () => {
+    if (!LocalNotifications) {
+      setNotifStatus('unsupported')
+      return
+    }
     try {
       const { display } = await LocalNotifications.requestPermissions()
       const value = display === 'granted' ? 'granted' : 'denied'
@@ -1130,6 +1159,10 @@ function ShootOutfitsTab({ shootId }) {
   }, [shootId])
 
   const takeOrPickPhoto = async () => {
+    if (!Camera) {
+      setError('Camera not available on this device')
+      return
+    }
     try {
       setUploading(true)
       setError(null)
@@ -1952,7 +1985,12 @@ function IdeasView() {
     fetchIdeas()
   }, [])
 
+
   const takeOrPickPhoto = async () => {
+    if (!Camera) {
+      setError('Camera not available on this device')
+      return
+    }
     try {
       setUploadingPhoto(true)
       setError(null)
