@@ -1306,6 +1306,7 @@ function ShootMoodBoardTab({ shootId }) {
   const [error, setError] = useState(null)
   const [lightboxIndex, setLightboxIndex] = useState(null)
   const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -1372,7 +1373,7 @@ function ShootMoodBoardTab({ shootId }) {
       setError(e.message)
     } finally {
       setUploading(false)
-      e.target.value = ''
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -1390,15 +1391,34 @@ function ShootMoodBoardTab({ shootId }) {
 
       <ErrorBanner message={error} />
 
-      <button
-        type="button"
-        onClick={takeOrPickPhoto}
-        className="kro-btn kro-btn-primary"
-        style={{ minHeight: 56, width: '100%', justifyContent: 'center', marginBottom: 16 }}
-        disabled={uploadingPhoto}
+      <label
+        style={{
+          cursor: uploading ? 'default' : 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          minHeight: 56,
+          width: '100%',
+          padding: '0 20px',
+          background: uploading ? '#991b1b' : '#ef4444',
+          color: '#fff',
+          borderRadius: 12,
+          fontWeight: 700,
+          fontSize: 16,
+          marginBottom: 16,
+        }}
       >
-        <Plus size={18} /> {uploadingPhoto ? 'Uploading...' : 'Add Photo'}
-      </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleUpload}
+          disabled={uploading}
+        />
+        <Plus size={18} /> {uploading ? 'Uploading...' : '+ Add Photo'}
+      </label>
 
       {loading ? (
         <p style={{ color: '#94a3b8', fontSize: 16 }}>Loading mood board…</p>
