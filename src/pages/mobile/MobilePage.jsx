@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import { LocalNotifications } from '@capacitor/local-notifications'
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
 import {
-  Camera,
+  Camera as CameraIcon,
   Plus,
   Sparkles,
   Lightbulb,
@@ -20,6 +22,51 @@ import { supabase } from '../../lib/supabase'
 
 const IDEA_CATEGORIES = ['fashion', 'portrait', 'product', 'editorial']
 const NOTIF_PERMISSION_KEY = 'kro_shootos_notif_permission'
+const CACHED_SHOOTS_KEY = 'kro_cached_shoots'
+
+async function scheduleLocalNotifications() {
+  const { data: shoots } = await supabase
+    .from('shoots')
+    .select('id, name, date')
+    .order('date', { ascending: true })
+
+  if (!shoots) return
+
+  const notifications = []
+  let id = 1
+  const now = Date.now()
+
+  shoots.forEach((s) => {
+    if (!s.date) return
+    const shootTs = new Date(s.date + 'T08:00:00').getTime()
+
+    const reminders = [
+      { days: -7, label: 'is in 7 days' },
+      { days: -2, label: 'is in 2 days' },
+      { days: -1, label: 'is tomorrow' },
+      { days: 0, label: 'is today!' },
+    ]
+
+    reminders.forEach(({ days, label }) => {
+      const fireAt = shootTs + days * 86400000
+      if (fireAt > now) {
+        notifications.push({
+          id: id++,
+          title: 'KRO ShootOS',
+          body: `${s.name} ${label}`,
+          schedule: { at: new Date(fireAt) },
+          sound: null,
+          actionTypeId: '',
+          extra: null,
+        })
+      }
+    })
+  })
+
+  if (notifications.length > 0) {
+    await LocalNotifications.schedule({ notifications })
+  }
+}
 
 function getStoredNotifPermission() {
   if (typeof window === 'undefined') return 'default'
@@ -144,7 +191,14 @@ function ErrorBanner({ message }) {
 
 /* ============== HOME ============== */
 function HomeView() {
-  const [shoots, setShoots] = useState([])
+  const [shoots, setShoots] = useState(() => {
+    try {
+      const cached = localStorage.getItem(CACHED_SHOOTS_KEY)
+      return cached ? JSON.parse(cached) : []
+    } catch {
+      return []
+    }
+  })
   const [ideas, setIdeas] = useState([])
   const [team, setTeam] = useState([])
   const [loading, setLoading] = useState(true)
@@ -152,17 +206,16 @@ function HomeView() {
   const [notifStatus, setNotifStatus] = useState(() => getStoredNotifPermission())
 
   const handleRequestNotifications = async () => {
-    if (typeof window === 'undefined' || typeof Notification === 'undefined') {
-      setNotifStatus('unsupported')
-      return
-    }
     try {
-      const result = await Notification.requestPermission()
-      const value = result || 'default'
+      const { display } = await LocalNotifications.requestPermissions()
+      const value = display === 'granted' ? 'granted' : 'denied'
       setNotifStatus(value)
       storeNotifPermission(value)
+      if (display === 'granted') {
+        await scheduleLocalNotifications()
+      }
     } catch (e) {
-      setNotifStatus('default')
+      setNotifStatus('denied')
     }
   }
 
@@ -192,7 +245,9 @@ function HomeView() {
         if (shootsRes.error) throw shootsRes.error
         if (ideasRes.error) throw ideasRes.error
         if (teamRes.error) throw teamRes.error
-        setShoots(shootsRes.data || [])
+        const shootsList = shootsRes.data || []
+        setShoots(shootsList)
+        localStorage.setItem(CACHED_SHOOTS_KEY, JSON.stringify(shootsList))
         setIdeas(ideasRes.data || [])
         setTeam(teamRes.data || [])
       } catch (e) {
@@ -259,7 +314,7 @@ function HomeView() {
       <section className="kro-mobile-card">
         <div className="kro-mobile-card-header">
           <div className="kro-mobile-card-icon">
-            <Camera size={24} />
+            <CameraIcon size={24} />
           </div>
           <div className="min-w-0">
             <h2>Upcoming Shoots</h2>
@@ -395,34 +450,76 @@ function HomeView() {
 
 /* ============== SHOOTS ============== */
 function ShootsView() {
-  const [shoots, setShoots] = useState([])
+  const [shoots, setShoots] = useState(() => {
+    try {
+      const cached = localStorage.getItem(CACHED_SHOOTS_KEY)
+      return cached ? JSON.parse(cached) : []
+    } catch {
+      return []
+    }
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState(null)
+  const [showNewShoot, setShowNewShoot] = useState(false)
+  const [newShootForm, setNewShootForm] = useState({
+    name: '',
+    date: '',
+    location: '',
+    status: 'planned',
+    notes: '',
+  })
+  const [savingShoot, setSavingShoot] = useState(false)
+
+  const fetchShoots = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: err } = await supabase
+        .from('shoots')
+        .select('id, name, date, location, status, notes')
+        .order('date', { ascending: true })
+      if (err) throw err
+      const list = data || []
+      setShoots(list)
+      localStorage.setItem(CACHED_SHOOTS_KEY, JSON.stringify(list))
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const { data, error: err } = await supabase
-          .from('shoots')
-          .select('id, name, date, location, status, notes')
-          .order('date', { ascending: true })
-        if (cancelled) return
-        if (err) throw err
-        setShoots(data || [])
-      } catch (e) {
-        if (!cancelled) setError(e.message)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
+    fetchShoots()
   }, [])
+
+  const handleCreateShoot = async (e) => {
+    e.preventDefault()
+    if (!newShootForm.name.trim()) {
+      setError('Shoot name is required')
+      return
+    }
+    setSavingShoot(true)
+    setError(null)
+    try {
+      const { error: err } = await supabase.from('shoots').insert({
+        name: newShootForm.name.trim(),
+        date: newShootForm.date || null,
+        location: newShootForm.location.trim() || null,
+        status: newShootForm.status,
+        notes: newShootForm.notes.trim() || null,
+      })
+      if (err) throw err
+      setNewShootForm({ name: '', date: '', location: '', status: 'planned', notes: '' })
+      setShowNewShoot(false)
+      await fetchShoots()
+    } catch (e2) {
+      setError(e2.message)
+    } finally {
+      setSavingShoot(false)
+    }
+  }
 
   if (selected) {
     return <ShootDetailView shoot={selected} onBack={() => setSelected(null)} />
@@ -436,9 +533,104 @@ function ShootsView() {
           <h1>All Shoots</h1>
           <p>Tap a shoot for details.</p>
         </div>
+        <button
+          type="button"
+          onClick={() => setShowNewShoot(true)}
+          className="kro-mobile-icon-button"
+          aria-label="New shoot"
+        >
+          <Plus size={24} />
+        </button>
       </div>
 
       <ErrorBanner message={error} />
+
+      {showNewShoot && (
+        <form
+          onSubmit={handleCreateShoot}
+          className="kro-mobile-card"
+          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+        >
+          <div className="kro-mobile-card-header" style={{ marginBottom: 0 }}>
+            <div className="kro-mobile-card-icon">
+              <CameraIcon size={24} />
+            </div>
+            <div className="min-w-0">
+              <h2>New Shoot</h2>
+              <p>Add a shoot from mobile</p>
+            </div>
+          </div>
+          <label className="kro-label" style={{ margin: 0 }}>
+            Shoot name *
+          </label>
+          <input
+            className="kro-input"
+            required
+            placeholder="Shoot name…"
+            value={newShootForm.name}
+            onChange={(e) => setNewShootForm({ ...newShootForm, name: e.target.value })}
+          />
+          <label className="kro-label" style={{ margin: 0 }}>
+            Date
+          </label>
+          <input
+            type="date"
+            className="kro-input"
+            value={newShootForm.date}
+            onChange={(e) => setNewShootForm({ ...newShootForm, date: e.target.value })}
+          />
+          <label className="kro-label" style={{ margin: 0 }}>
+            Location
+          </label>
+          <input
+            className="kro-input"
+            placeholder="Location…"
+            value={newShootForm.location}
+            onChange={(e) => setNewShootForm({ ...newShootForm, location: e.target.value })}
+          />
+          <label className="kro-label" style={{ margin: 0 }}>
+            Status
+          </label>
+          <select
+            className="kro-input"
+            value={newShootForm.status}
+            onChange={(e) => setNewShootForm({ ...newShootForm, status: e.target.value })}
+          >
+            <option value="planned">planned</option>
+            <option value="in progress">in progress</option>
+            <option value="done">done</option>
+          </select>
+          <label className="kro-label" style={{ margin: 0 }}>
+            Notes
+          </label>
+          <textarea
+            className="kro-input"
+            rows={3}
+            placeholder="Notes…"
+            value={newShootForm.notes}
+            onChange={(e) => setNewShootForm({ ...newShootForm, notes: e.target.value })}
+            style={{ resize: 'vertical' }}
+          />
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              type="button"
+              className="kro-btn kro-btn-ghost"
+              style={{ minHeight: 56, flex: 1, justifyContent: 'center' }}
+              onClick={() => setShowNewShoot(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="kro-btn kro-btn-primary"
+              style={{ minHeight: 56, flex: 1, justifyContent: 'center' }}
+              disabled={savingShoot}
+            >
+              {savingShoot ? 'Saving…' : 'Create Shoot'}
+            </button>
+          </div>
+        </form>
+      )}
 
       {loading ? (
         <p style={{ color: '#94a3b8', fontSize: 16 }}>Loading shoots…</p>
@@ -477,7 +669,7 @@ function ShootsView() {
                   flex: '0 0 52px',
                 }}
               >
-                <Camera size={24} />
+                <CameraIcon size={24} />
               </div>
               <div className="min-w-0 flex-1">
                 <span style={{ display: 'block' }}>{s.name}</span>
@@ -615,7 +807,7 @@ function ShootInfoTab({ shoot }) {
     <section className="kro-mobile-card">
       <div className="kro-mobile-card-header">
         <div className="kro-mobile-card-icon">
-          <Camera size={24} />
+          <CameraIcon size={24} />
         </div>
         <div className="min-w-0">
           <h2>Info</h2>
@@ -910,6 +1102,7 @@ function ShootOutfitsTab({ shootId }) {
   const [outfits, setOutfits] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -936,6 +1129,50 @@ function ShootOutfitsTab({ shootId }) {
     }
   }, [shootId])
 
+  const takeOrPickPhoto = async () => {
+    try {
+      setUploading(true)
+      setError(null)
+      const image = await Camera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Prompt,
+      })
+
+      const res = await fetch(image.dataUrl)
+      const blob = await res.blob()
+      const fileName = `${Date.now()}.jpg`
+      const filePath = `${shootId}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('outfits')
+        .upload(filePath, blob, { contentType: 'image/jpeg' })
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage
+        .from('outfits')
+        .getPublicUrl(filePath)
+
+      await supabase.from('outfits').insert({
+        shoot_id: shootId,
+        name: 'New outfit',
+        image_url: urlData.publicUrl,
+      })
+
+      const { data: fresh } = await supabase
+        .from('outfits')
+        .select('id, shoot_id, name, description, notes, image_url')
+        .eq('shoot_id', shootId)
+      if (fresh) setOutfits(fresh)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   return (
     <section className="kro-mobile-card">
       <div className="kro-mobile-card-header">
@@ -949,6 +1186,16 @@ function ShootOutfitsTab({ shootId }) {
       </div>
 
       <ErrorBanner message={error} />
+
+      <button
+        type="button"
+        onClick={takeOrPickPhoto}
+        className="kro-btn kro-btn-primary"
+        style={{ minHeight: 56, width: '100%', justifyContent: 'center', marginBottom: 16 }}
+        disabled={uploading}
+      >
+        <Plus size={18} /> {uploading ? 'Uploading...' : 'Add Photo'}
+      </button>
 
       {loading ? (
         <p style={{ color: '#94a3b8', fontSize: 16 }}>Loading outfits…</p>
@@ -1025,6 +1272,7 @@ function ShootMoodBoardTab({ shootId }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [lightboxIndex, setLightboxIndex] = useState(null)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -1051,6 +1299,50 @@ function ShootMoodBoardTab({ shootId }) {
     }
   }, [shootId])
 
+  const refreshMoodBoard = async () => {
+    const { data: fresh, error: err } = await supabase
+      .from('mood_board')
+      .select('id, shoot_id, image_url')
+      .eq('shoot_id', shootId)
+      .order('id', { ascending: true })
+    if (err) throw err
+    setItems(fresh || [])
+  }
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      setUploading(true)
+      setError(null)
+      const ext = file.name.split('.').pop() || 'jpg'
+      const fileName = `${Date.now()}.${ext}`
+      const filePath = `${shootId}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('mood-board')
+        .upload(filePath, file, { contentType: file.type || 'image/jpeg' })
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage
+        .from('mood-board')
+        .getPublicUrl(filePath)
+
+      await supabase.from('mood_board').insert({
+        shoot_id: shootId,
+        image_url: urlData.publicUrl,
+      })
+
+      await refreshMoodBoard()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+
   return (
     <section className="kro-mobile-card">
       <div className="kro-mobile-card-header">
@@ -1064,6 +1356,34 @@ function ShootMoodBoardTab({ shootId }) {
       </div>
 
       <ErrorBanner message={error} />
+
+      <label
+        style={{
+          cursor: uploading ? 'default' : 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          minHeight: 56,
+          width: '100%',
+          padding: '0 20px',
+          background: uploading ? '#991b1b' : '#ef4444',
+          color: '#fff',
+          borderRadius: 12,
+          fontWeight: 700,
+          fontSize: 16,
+          marginBottom: 16,
+        }}
+      >
+        <input
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleUpload}
+          disabled={uploading}
+        />
+        {uploading ? 'Uploading...' : '+ Add Photo'}
+      </label>
 
       {loading ? (
         <p style={{ color: '#94a3b8', fontSize: 16 }}>Loading mood board…</p>
@@ -1627,6 +1947,7 @@ function IdeasView() {
   const [form, setForm] = useState({ title: '', description: '', category: 'fashion' })
   const [saving, setSaving] = useState(false)
   const [catFilter, setCatFilter] = useState('all')
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
   const fetchIdeas = async () => {
     setLoading(true)
@@ -1648,6 +1969,52 @@ function IdeasView() {
   useEffect(() => {
     fetchIdeas()
   }, [])
+
+  const takeOrPickPhoto = async () => {
+    try {
+      setUploadingPhoto(true)
+      setError(null)
+      const image = await Camera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Prompt,
+      })
+
+      const title = `Photo idea ${new Date().toLocaleDateString()}`
+      const { data: idea, error: ideaErr } = await supabase
+        .from('ideas')
+        .insert({ title, description: '', category: 'fashion' })
+        .select('id')
+        .single()
+      if (ideaErr) throw ideaErr
+
+      const res = await fetch(image.dataUrl)
+      const blob = await res.blob()
+      const fileName = `${Date.now()}.jpg`
+      const filePath = `${idea.id}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('idea-mood-board')
+        .upload(filePath, blob, { contentType: 'image/jpeg' })
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage
+        .from('idea-mood-board')
+        .getPublicUrl(filePath)
+
+      await supabase.from('idea_mood_board').insert({
+        idea_id: idea.id,
+        image_url: urlData.publicUrl,
+      })
+
+      await fetchIdeas()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
 
   const filtered = ideas.filter(
     (i) => catFilter === 'all' || i.category === catFilter
@@ -1713,105 +2080,33 @@ function IdeasView() {
 
       <ErrorBanner message={error} />
 
-      {showForm && (
-        <form
-          onSubmit={handleSave}
-          className="kro-mobile-card"
-          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
-        >
-          <div className="kro-mobile-card-header" style={{ marginBottom: 0 }}>
-            <div className="kro-mobile-card-icon">
-              <Lightbulb size={24} />
-            </div>
-            <div className="min-w-0">
-              <h2>New Idea</h2>
-              <p>Capture inspiration fast</p>
-            </div>
-          </div>
-          <label className="kro-label" style={{ margin: 0 }}>
-            Title
-          </label>
-          <input
-            className="kro-input"
-            required
-            placeholder="Idea title…"
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-          />
-          <label className="kro-label" style={{ margin: 0 }}>
-            Description
-          </label>
-          <textarea
-            className="kro-input"
-            rows={3}
-            placeholder="Describe your idea…"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            style={{ resize: 'vertical' }}
-          />
-          <label className="kro-label" style={{ margin: 0 }}>
-            Category
-          </label>
-          <select
-            className="kro-input"
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-          >
-            {IDEA_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              type="button"
-              className="kro-btn kro-btn-ghost"
-              style={{ minHeight: 56, flex: 1, justifyContent: 'center' }}
-              onClick={() => setShowForm(false)}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="kro-btn kro-btn-primary"
-              style={{ minHeight: 56, flex: 1, justifyContent: 'center' }}
-              disabled={saving}
-            >
-              {saving ? 'Saving…' : 'Save Idea'}
-            </button>
-          </div>
-        </form>
-      )}
-
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {['all', ...IDEA_CATEGORIES].map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => setCatFilter(c)}
-            style={{
-              minHeight: 48,
-              padding: '0 18px',
-              borderRadius: 12,
-              fontSize: 16,
-              fontWeight: 800,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              background:
-                catFilter === c ? 'rgba(239,68,68,0.15)' : 'transparent',
-              color: catFilter === c ? '#ef4444' : '#94a3b8',
-              border: `1px solid ${
-                catFilter === c ? 'rgba(239,68,68,0.3)' : '#334155'
-              }`,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
+      <label
+        style={{
+          cursor: uploading ? 'default' : 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          minHeight: 56,
+          width: '100%',
+          padding: '0 20px',
+          background: uploading ? '#991b1b' : '#ef4444',
+          color: '#fff',
+          borderRadius: 12,
+          fontWeight: 700,
+          fontSize: 16,
+          marginBottom: 16,
+        }}
+      >
+        <input
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleUpload}
+          disabled={uploading}
+        />
+        {uploading ? 'Uploading...' : '+ Add Photo'}
+      </label>
 
       {loading ? (
         <p style={{ color: '#94a3b8', fontSize: 16 }}>Loading ideas…</p>
@@ -2423,7 +2718,7 @@ function CalendarView() {
                     flex: '0 0 44px',
                   }}
                 >
-                  <Camera size={22} />
+                  <CameraIcon size={22} />
                 </div>
                 <div
                   className="min-w-0 flex-1"
@@ -2465,10 +2760,24 @@ function CalendarView() {
 export default function MobilePage() {
   const location = useLocation()
   const [activeTab, setActiveTab] = useState(() => tabFromPath(location.pathname))
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator === 'undefined' ? true : navigator.onLine
+  )
 
   useEffect(() => {
     setActiveTab(tabFromPath(location.pathname))
   }, [location.pathname])
+
+  useEffect(() => {
+    const on = () => setIsOnline(true)
+    const off = () => setIsOnline(false)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => {
+      window.removeEventListener('online', on)
+      window.removeEventListener('offline', off)
+    }
+  }, [])
 
   let view = null
   if (activeTab === 'home') view = <HomeView />
@@ -2478,7 +2787,25 @@ export default function MobilePage() {
   else if (activeTab === 'ideas') view = <IdeasView />
   else if (activeTab === 'team') view = <TeamView />
 
-  return <div className="kro-mobile-page-wrap">{view}</div>
+  return (
+    <div className="kro-mobile-page-wrap">
+      {!isOnline && (
+        <div
+          style={{
+            background: '#ef4444',
+            color: '#fff',
+            padding: '12px 16px',
+            textAlign: 'center',
+            fontWeight: 700,
+            fontSize: 14,
+          }}
+        >
+          You are offline — showing cached data
+        </div>
+      )}
+      {view}
+    </div>
+  )
 }
 
 function tabFromPath(pathname) {
